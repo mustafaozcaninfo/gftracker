@@ -11,8 +11,15 @@ export interface ProductFilters {
   search: string;
   brand: string;
   size: string;
+  maxprice: number;
   mindisc: number;
   sort: SortKey;
+}
+
+export function parseMaxprice(value: string | null): number {
+  const n = Number(value ?? "0");
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.round(n);
 }
 
 export function parseSort(value: string | null): SortKey {
@@ -35,6 +42,7 @@ export function parseProductFilters(
     search: params.get("search") ?? "",
     brand: params.get("brand") ?? "all",
     size: params.get("size") ?? "all",
+    maxprice: parseMaxprice(params.get("maxprice")),
     mindisc: parseMindisc(params.get("mindisc")),
     sort: parseSort(params.get("sort")),
   };
@@ -53,6 +61,9 @@ export function buildProductsHref(
   }
   if (filters.size && filters.size !== "all") {
     params.set("size", filters.size);
+  }
+  if (filters.maxprice && filters.maxprice > 0) {
+    params.set("maxprice", String(filters.maxprice));
   }
   if (filters.mindisc && filters.mindisc > 0) {
     params.set("mindisc", String(filters.mindisc));

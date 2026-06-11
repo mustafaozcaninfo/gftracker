@@ -42,7 +42,7 @@ export function ProductGrid({ brands }: ProductGridProps) {
     () => parseProductFilters(searchParams),
     [searchParams],
   );
-  const { brand, size, mindisc: minDiscount, sort } = filters;
+  const { brand, size, maxprice, mindisc: minDiscount, sort } = filters;
 
   const [query, setQuery] = useState(filters.search);
   const deferredQuery = useDeferredValue(query);
@@ -56,6 +56,7 @@ export function ProductGrid({ brands }: ProductGridProps) {
       search: string;
       brand: string;
       size: string;
+      maxprice: number;
       mindisc: number;
       sort: SortKey;
     }>) => {
@@ -63,6 +64,7 @@ export function ProductGrid({ brands }: ProductGridProps) {
         search: patch.search ?? filters.search,
         brand: patch.brand ?? filters.brand,
         size: patch.size ?? filters.size,
+        maxprice: patch.maxprice ?? filters.maxprice,
         mindisc: patch.mindisc ?? filters.mindisc,
         sort: patch.sort ?? filters.sort,
       };
@@ -116,6 +118,7 @@ export function ProductGrid({ brands }: ProductGridProps) {
     const list = products.filter((p) => {
       if (brand !== "all" && p.brand !== brand) return false;
       if (!productMatchesSize(p, size)) return false;
+      if (maxprice > 0 && (p.current_price ?? 0) > maxprice) return false;
       if ((p.discount_percent ?? 0) < minDiscount) return false;
       if (!q) return true;
       return (
@@ -140,11 +143,11 @@ export function ProductGrid({ brands }: ProductGridProps) {
           );
       }
     });
-  }, [products, deferredQuery, brand, size, minDiscount, sort]);
+  }, [products, deferredQuery, brand, size, maxprice, minDiscount, sort]);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [deferredQuery, brand, size, minDiscount, sort]);
+  }, [deferredQuery, brand, size, maxprice, minDiscount, sort]);
 
   const visible = filtered.slice(0, visibleCount);
   const hasMore = visibleCount < filtered.length;
@@ -235,6 +238,21 @@ export function ProductGrid({ brands }: ProductGridProps) {
               </optgroup>
             )}
           </select>
+        </label>
+
+        <label className="space-y-1.5 text-sm">
+          <span className="text-neutral-500">Max price (QAR)</span>
+          <input
+            type="number"
+            min={0}
+            step={50}
+            value={maxprice || ""}
+            onChange={(e) =>
+              updateFilters({ maxprice: Number(e.target.value) || 0 })
+            }
+            placeholder="Any"
+            className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
+          />
         </label>
 
         <label className="space-y-2 text-sm">

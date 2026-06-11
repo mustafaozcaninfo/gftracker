@@ -115,6 +115,24 @@ def export_dashboard(
         encoding="utf-8",
     )
 
+    biggest_drops = store.get_biggest_drops(limit=50)
+    (out_dir / "biggest_drops.json").write_text(
+        json.dumps({"biggest_drops": biggest_drops}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    brand_stats = store.get_brand_stats()
+    (out_dir / "brand_stats.json").write_text(
+        json.dumps({"brands": brand_stats}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    histories = store.export_price_histories()
+    (out_dir / "price_histories.json").write_text(
+        json.dumps({"histories": histories}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
     out = Path(output_path)
     out.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     return out

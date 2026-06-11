@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { loadMeta } from "@/lib/data";
-import { buildProductsHref } from "@/lib/product-filters";
 import { PageShell } from "@/components/PageShell";
+import { BrandsGrid } from "@/components/BrandsGrid";
 
 export default async function BrandsPage() {
   const meta = await loadMeta();
@@ -20,21 +19,11 @@ export default async function BrandsPage() {
           </p>
           <h2 className="font-display text-xl sm:text-2xl">Brands</h2>
           <p className="mt-1 text-sm text-neutral-600">
-            {meta.brands.length.toLocaleString()} brands — tap to filter products
+            {meta.brands.length.toLocaleString()} brands with product counts and
+            discount stats
           </p>
         </div>
-
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {meta.brands.map((brand) => (
-            <Link
-              key={brand}
-              href={buildProductsHref({ brand })}
-              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-black/10 bg-white px-3 py-2.5 text-center text-sm font-medium text-neutral-800 transition hover:border-gl-gold hover:bg-neutral-50"
-            >
-              {brand}
-            </Link>
-          ))}
-        </div>
+        <BrandsGrid />
       </section>
     </PageShell>
   );

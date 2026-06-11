@@ -15,6 +15,12 @@ export default async function HomePage() {
       count: 20,
     },
     {
+      href: "/biggest-drops",
+      title: "Price Drops",
+      desc: "Biggest QAR reductions",
+      count: meta.stats.price_changes_today,
+    },
+    {
       href: "/buy-signals",
       title: "Buy Signals",
       desc: "At or near all-time low",

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Product } from "@/lib/types";
 import { formatQAR } from "@/lib/format";
 import { BrandLink } from "./BrandLink";
@@ -62,7 +63,12 @@ export function ProductCard({
 
       <div className="flex flex-1 flex-col gap-2.5 p-3 sm:gap-3 sm:p-4">
         <h3 className="line-clamp-3 text-sm font-medium leading-snug text-neutral-900 sm:text-[15px]">
-          {product.name}
+          <Link
+            href={`/products/${product.product_id}`}
+            className="hover:underline"
+          >
+            {product.name}
+          </Link>
         </h3>
 
         {product.sizes && product.sizes.length > 0 && (

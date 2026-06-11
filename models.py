@@ -741,6 +741,73 @@ class ProductStore:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def get_biggest_drops(self, limit: int = 50) -> list[dict[str, Any]]:
+        changes = self.get_all_price_changes(limit=500)
+        drops: list[dict[str, Any]] = []
+        for change in changes:
+            old_p = float(change["old_current_price"])
+            new_p = float(change["new_current_price"])
+            if new_p >= old_p:
+                continue
+            amount = round(old_p - new_p, 2)
+            item = dict(change)
+            item["drop_amount"] = amount
+            item["drop_percent"] = round((amount / old_p) * 100, 1) if old_p else 0
+            drops.append(item)
+        drops.sort(key=lambda row: row["drop_amount"], reverse=True)
+        return drops[:limit]
+
+    def get_brand_stats(self) -> dict[str, dict[str, Any]]:
+        products = self.get_products_with_analytics()
+        stats: dict[str, dict[str, Any]] = {}
+        for product in products:
+            brand = product.get("brand") or ""
+            if not brand:
+                continue
+            entry = stats.setdefault(
+                brand,
+                {"count": 0, "discounts": [], "max_discount": 0, "min_price": None},
+            )
+            entry["count"] += 1
+            discount = int(product.get("discount_percent") or 0)
+            entry["discounts"].append(discount)
+            entry["max_discount"] = max(entry["max_discount"], discount)
+            price = product.get("current_price")
+            if price is not None:
+                entry["min_price"] = (
+                    price
+                    if entry["min_price"] is None
+                    else min(entry["min_price"], price)
+                )
+        for entry in stats.values():
+            discounts = entry.pop("discounts")
+            entry["avg_discount"] = (
+                round(sum(discounts) / len(discounts), 1) if discounts else 0
+            )
+        return dict(sorted(stats.items(), key=lambda item: (-item[1]["count"], item[0])))
+
+    def export_price_histories(self, max_points: int = 45) -> dict[str, list[list[Any]]]:
+        """Compact histories: product_id -> [[date, price, discount], ...]."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT product_id, price_date, current_price, discount_percent
+                FROM daily_prices
+                ORDER BY product_id ASC, price_date ASC
+                """
+            ).fetchall()
+
+        grouped: dict[str, list[list[Any]]] = {}
+        for row in rows:
+            pid = row["product_id"]
+            point = [row["price_date"], float(row["current_price"]), int(row["discount_percent"])]
+            grouped.setdefault(pid, []).append(point)
+
+        for pid, points in grouped.items():
+            if len(points) > max_points:
+                grouped[pid] = points[-max_points:]
+        return grouped
+
     def get_scrape_history(self, limit: int = 30) -> list[dict[str, Any]]:
         with self._connect() as conn:
             rows = conn.execute(

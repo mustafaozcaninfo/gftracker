@@ -33,6 +33,18 @@ export interface PriceChange {
   price_date?: string;
 }
 
+export interface PriceDrop extends PriceChange {
+  drop_amount: number;
+  drop_percent: number;
+}
+
+export interface BrandStats {
+  count: number;
+  avg_discount: number;
+  max_discount: number;
+  min_price: number | null;
+}
+
 export interface ScrapeRun {
   id: number;
   run_date: string;

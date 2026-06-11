@@ -1,8 +1,10 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import type {
+  BrandStats,
   DashboardStats,
   PriceChange,
+  PriceDrop,
   Product,
   ScrapeRun,
 } from "./types";
@@ -53,6 +55,26 @@ export async function loadBestDeals(): Promise<Product[]> {
     return data.best_deals;
   } catch {
     return [];
+  }
+}
+
+export async function loadBiggestDrops(): Promise<PriceDrop[]> {
+  try {
+    const data = await readJson<{ biggest_drops: PriceDrop[] }>("biggest_drops.json");
+    return data.biggest_drops;
+  } catch {
+    return [];
+  }
+}
+
+export async function loadBrandStats(): Promise<Record<string, BrandStats>> {
+  try {
+    const data = await readJson<{ brands: Record<string, BrandStats> }>(
+      "brand_stats.json",
+    );
+    return data.brands;
+  } catch {
+    return {};
   }
 }
 
