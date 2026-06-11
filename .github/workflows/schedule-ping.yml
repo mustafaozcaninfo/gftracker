@@ -1,0 +1,17 @@
+name: Schedule ping
+
+on:
+  schedule:
+    # Scheduler kayıtlı mı diye hafif kontrol (saat :37 UTC)
+    - cron: "37 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm scheduled event fired
+        run: echo "schedule ok at $(date -u +%Y-%m-%dT%H:%M:%SZ) event=${{ github.event_name }}"

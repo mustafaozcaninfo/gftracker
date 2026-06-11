@@ -2,9 +2,12 @@ name: Hourly GF Tracker
 
 on:
   schedule:
-    # Every hour on the hour (UTC)
-    - cron: "0 * * * *"
+    # Saatlik — :15 Qatar (GitHub :00 UTC'de sık drop ediyor)
+    - cron: "15 * * * *"
+      timezone: Asia/Qatar
   workflow_dispatch:
+  repository_dispatch:
+    types: [hourly-scrape]
 
 concurrency:
   group: gftracker-scrape-${{ github.ref }}
