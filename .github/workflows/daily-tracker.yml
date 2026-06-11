@@ -2,8 +2,8 @@ name: Daily GF Tracker
 
 on:
   schedule:
-    # 06:00 Qatar time (UTC+3) = 03:00 UTC
-    - cron: "0 3 * * *"
+    # Twice daily: 06:00 & 18:00 Qatar (UTC+3) = 03:00 & 15:00 UTC
+    - cron: "0 3,15 * * *"
   workflow_dispatch:
 
 jobs:
