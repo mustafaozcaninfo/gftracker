@@ -9,6 +9,7 @@ const NAV = [
   { href: "/best-deals", label: "Best Deals", countKey: "best_deals" as const },
   { href: "/buy-signals", label: "Buy Signals", countKey: "buy_signals" as const },
   { href: "/products", label: "All Products", countKey: "products" as const },
+  { href: "/brands", label: "Markalar" },
   { href: "/price-changes", label: "Price Changes", countKey: "changes" as const },
 ];
 
@@ -63,7 +64,7 @@ export function SiteHeader({ stats, counts = {} }: SiteHeaderProps) {
       >
         {NAV.map(({ href, label, countKey }) => {
           const active = pathname === href;
-          const count = countFor(countKey);
+          const count = countKey ? countFor(countKey) : undefined;
           return (
             <Link
               key={href}

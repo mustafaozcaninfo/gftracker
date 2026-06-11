@@ -1,7 +1,19 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { Product } from "@/lib/types";
+import {
+  type SortKey,
+  buildProductsHref,
+  parseProductFilters,
+} from "@/lib/product-filters";
 import { ProductCard } from "./ProductCard";
 
 const PAGE_SIZE = 24;
@@ -10,19 +22,53 @@ interface ProductGridProps {
   brands: string[];
 }
 
-type SortKey = "discount" | "price_asc" | "price_desc" | "name";
-
 export function ProductGrid({ brands }: ProductGridProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  const [brand, setBrand] = useState("all");
-  const [minDiscount, setMinDiscount] = useState(0);
-  const [sort, setSort] = useState<SortKey>("discount");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
+  const filters = useMemo(
+    () => parseProductFilters(searchParams),
+    [searchParams],
+  );
+  const { brand, mindisc: minDiscount, sort } = filters;
+
+  const [query, setQuery] = useState(filters.search);
   const deferredQuery = useDeferredValue(query);
+
+  useEffect(() => {
+    setQuery(filters.search);
+  }, [filters.search]);
+
+  const updateFilters = useCallback(
+    (patch: Partial<{
+      search: string;
+      brand: string;
+      mindisc: number;
+      sort: SortKey;
+    }>) => {
+      const next = {
+        search: patch.search ?? filters.search,
+        brand: patch.brand ?? filters.brand,
+        mindisc: patch.mindisc ?? filters.mindisc,
+        sort: patch.sort ?? filters.sort,
+      };
+      router.replace(buildProductsHref(next), { scroll: false });
+    },
+    [filters, router],
+  );
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      if (query.trim() === filters.search.trim()) return;
+      updateFilters({ search: query });
+    }, 300);
+    return () => window.clearTimeout(handle);
+  }, [query, filters.search, updateFilters]);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,9 +153,15 @@ export function ProductGrid({ brands }: ProductGridProps) {
             Catalog
           </p>
           <h2 className="font-display text-xl sm:text-2xl">All Products</h2>
+          {brand !== "all" && (
+            <p className="mt-1 text-sm text-neutral-600">
+              Brand: <span className="font-medium">{brand}</span>
+            </p>
+          )}
         </div>
         <p className="text-xs text-neutral-500 sm:text-sm">
-          Showing {visible.length.toLocaleString()} of {filtered.length.toLocaleString()}
+          Showing {visible.length.toLocaleString()} of{" "}
+          {filtered.length.toLocaleString()}
           {filtered.length !== products.length &&
             ` (${products.length.toLocaleString()} total)`}
         </p>
@@ -131,7 +183,7 @@ export function ProductGrid({ brands }: ProductGridProps) {
           <span className="text-neutral-500">Brand</span>
           <select
             value={brand}
-            onChange={(e) => setBrand(e.target.value)}
+            onChange={(e) => updateFilters({ brand: e.target.value })}
             className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
           >
             <option value="all">All brands</option>
@@ -156,7 +208,9 @@ export function ProductGrid({ brands }: ProductGridProps) {
             max={70}
             step={5}
             value={minDiscount}
-            onChange={(e) => setMinDiscount(Number(e.target.value))}
+            onChange={(e) =>
+              updateFilters({ mindisc: Number(e.target.value) })
+            }
             className="mt-1 w-full"
             aria-valuemin={0}
             aria-valuemax={70}
@@ -168,7 +222,9 @@ export function ProductGrid({ brands }: ProductGridProps) {
           <span className="text-neutral-500">Sort by</span>
           <select
             value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
+            onChange={(e) =>
+              updateFilters({ sort: e.target.value as SortKey })
+            }
             className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
           >
             <option value="discount">Highest discount</option>
@@ -203,7 +259,8 @@ export function ProductGrid({ brands }: ProductGridProps) {
                 onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
                 className="min-h-11 w-full rounded-xl bg-gl-black px-6 py-3 text-sm font-medium text-white hover:bg-neutral-800 sm:w-auto"
               >
-                Load more ({Math.min(PAGE_SIZE, filtered.length - visibleCount)} more)
+                Load more ({Math.min(PAGE_SIZE, filtered.length - visibleCount)}{" "}
+                more)
               </button>
             </div>
           )}
