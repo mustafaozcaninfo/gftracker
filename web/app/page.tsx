@@ -1,7 +1,6 @@
 import {
   loadBestDeals,
   loadBiggestDrops,
-  loadBuySignals,
   loadCatalogCounts,
   loadMeta,
   loadSoldProducts,
@@ -16,15 +15,15 @@ import { PageShell } from "@/components/PageShell";
 import { StatsCards } from "@/components/StatsCards";
 
 export default async function HomePage() {
-  const [meta, drops, bestDeals, buySignals, sold, catalog] =
-    await Promise.all([
+  const [meta, drops, bestDeals, sold, catalog] = await Promise.all([
       loadMeta(),
       loadBiggestDrops(),
       loadBestDeals(),
-      loadBuySignals(),
       loadSoldProducts(),
       loadCatalogCounts(),
     ]);
+
+  const stats = meta.stats;
 
   const quickLinks: QuickLinkData[] = [
     {
@@ -39,7 +38,7 @@ export default async function HomePage() {
       href: "/biggest-drops",
       title: "Price Drops",
       desc: "Largest QAR reductions logged",
-      count: meta.stats.drops_today ?? drops.length,
+      count: stats.drops_today ?? 0,
       countLabel: "drops today",
       tone: "border-emerald-200/80 bg-emerald-50/80",
     },
@@ -47,7 +46,7 @@ export default async function HomePage() {
       href: "/buy-signals",
       title: "Buy Signals",
       desc: "At or near all-time low (2+ days tracked)",
-      count: buySignals.length,
+      count: stats.buy_signals_count ?? 0,
       countLabel: "signals",
       tone: "border-teal-200/80 bg-teal-50/80",
     },
@@ -63,7 +62,7 @@ export default async function HomePage() {
       href: "/products",
       title: "All Products",
       desc: "Full catalog with filters",
-      count: meta.stats.total_products,
+      count: stats.total_products,
       countLabel: "products",
       tone: "border-slate-200/80 bg-slate-50/80",
     },
@@ -71,7 +70,7 @@ export default async function HomePage() {
       href: "/brands",
       title: "Brands",
       desc: "Browse by brand",
-      count: meta.stats.brand_count || meta.brands.length,
+      count: stats.brand_count || meta.brands.length,
       countLabel: "brands",
       tone: "border-slate-200/80 bg-slate-50/50",
     },
@@ -101,17 +100,11 @@ export default async function HomePage() {
       generatedAt={meta.generated_at}
       counts={{
         best_deals: bestDeals.length,
-        buy_signals: buySignals.length,
-        changes: meta.stats.drops_today ?? drops.length,
+        buy_signals: stats.buy_signals_count ?? 0,
+        changes: stats.drops_today ?? 0,
       }}
     >
-      <StatsCards
-        stats={{
-          ...meta.stats,
-          sold_recent_24h: sold.sold_recent_24h,
-        }}
-        generatedAt={formatDate(meta.generated_at)}
-      />
+      <StatsCards stats={stats} generatedAt={formatDate(meta.generated_at)} />
 
       <OverviewQuickLinks links={quickLinks} />
 
