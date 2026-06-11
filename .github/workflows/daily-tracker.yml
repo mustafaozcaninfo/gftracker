@@ -39,7 +39,8 @@ jobs:
         run: npm run build
 
       - name: Deploy to Vercel
-        working-directory: web
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: npx vercel deploy --prod --yes --token "$VERCEL_TOKEN"
+          VERCEL_ORG_ID: team_AUAwIcLTdwVr02cvagUnwFh5
+          VERCEL_PROJECT_ID: prj_feBvylpgLPqGJ3eLVQNA814168vp
+        run: npx vercel deploy --prod --yes --token "$VERCEL_TOKEN" --scope mst4fa-6141s-projects

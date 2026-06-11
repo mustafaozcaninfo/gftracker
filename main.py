@@ -50,31 +50,48 @@ def run_update(config_path: str | Path = "config.yaml", verbose: bool = False) -
 
     run_id = store.start_scrape_run(total_pages=0)
 
-    for page, page_products, total in scraper.iter_pages():
-        total_pages = total
-        if not page_products:
-            pages_failed += 1
-            continue
-        pages_ok += 1
-        all_products.extend(page_products)
-        all_ids.extend(p.product_id for p in page_products)
-        batch_changes, batch_stats = store.record_daily_scrape(
-            page_products, run_id, finalize=False
-        )
-        changes.extend(batch_changes)
-        new_products += batch_stats.new_products
-        price_changes += batch_stats.price_changes
-        store.update_scrape_run_progress(
-            run_id, pages_scraped=pages_ok, products_found=len(all_products)
-        )
+    try:
+        for page, page_products, total in scraper.iter_pages():
+            total_pages = total
+            if page == 1:
+                with store._connect() as conn:
+                    conn.execute(
+                        "UPDATE scrape_runs SET total_pages = ? WHERE id = ?",
+                        (total_pages, run_id),
+                    )
+            if not page_products:
+                pages_failed += 1
+                continue
+            pages_ok += 1
+            all_products.extend(page_products)
+            all_ids.extend(p.product_id for p in page_products)
+            batch_changes, batch_stats = store.record_daily_scrape(
+                page_products, run_id, finalize=False
+            )
+            changes.extend(batch_changes)
+            new_products += batch_stats.new_products
+            price_changes += batch_stats.price_changes
+            store.update_scrape_run_progress(
+                run_id, pages_scraped=pages_ok, products_found=len(all_products)
+            )
 
-    store.record_daily_scrape([], run_id, finalize=True, all_seen_ids=list(dict.fromkeys(all_ids)))
-    store.complete_scrape_run(
-        run_id,
-        pages_scraped=pages_ok,
-        products_found=len(all_products),
-        status="completed" if pages_failed == 0 else "partial",
-    )
+        store.record_daily_scrape(
+            [], run_id, finalize=True, all_seen_ids=list(dict.fromkeys(all_ids))
+        )
+        store.complete_scrape_run(
+            run_id,
+            pages_scraped=pages_ok,
+            products_found=len(all_products),
+            status="completed" if pages_failed == 0 else "partial",
+        )
+    except Exception:
+        store.complete_scrape_run(
+            run_id,
+            pages_scraped=pages_ok,
+            products_found=len(all_products),
+            status="failed",
+        )
+        raise
 
     products = all_products
     scrape_meta = {
