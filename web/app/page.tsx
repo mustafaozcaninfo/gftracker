@@ -1,61 +1,96 @@
-import Link from "next/link";
-import { loadBiggestDrops, loadMeta } from "@/lib/data";
+import {
+  loadBestDeals,
+  loadBiggestDrops,
+  loadBuySignals,
+  loadCatalogCounts,
+  loadMeta,
+  loadSoldProducts,
+} from "@/lib/data";
 import { formatDate } from "@/lib/format";
 import { OverviewExtras } from "@/components/OverviewExtras";
+import {
+  OverviewQuickLinks,
+  type QuickLinkData,
+} from "@/components/OverviewQuickLinks";
 import { PageShell } from "@/components/PageShell";
 import { StatsCards } from "@/components/StatsCards";
 
 export default async function HomePage() {
-  const [meta, drops] = await Promise.all([loadMeta(), loadBiggestDrops()]);
+  const [meta, drops, bestDeals, buySignals, sold, catalog] =
+    await Promise.all([
+      loadMeta(),
+      loadBiggestDrops(),
+      loadBestDeals(),
+      loadBuySignals(),
+      loadSoldProducts(),
+      loadCatalogCounts(),
+    ]);
 
-  const quickLinks = [
+  const quickLinks: QuickLinkData[] = [
     {
       href: "/best-deals",
       title: "Best Deals",
-      desc: "Top 20 discounts today",
-      count: 20,
+      desc: "Highest discounts right now",
+      count: bestDeals.length,
+      countLabel: "deals",
+      tone: "border-amber-200/80 bg-amber-50/80",
     },
     {
       href: "/biggest-drops",
       title: "Price Drops",
-      desc: "Biggest QAR reductions",
-      count: meta.stats.price_changes_today,
-    },
-    {
-      href: "/sold",
-      title: "Sold / Gone",
-      desc: "Removed from offer (last 48h)",
-      count: meta.stats.sold_recent_48h ?? 0,
+      desc: "Largest QAR reductions logged",
+      count: drops.length,
+      countLabel: "drops",
+      tone: "border-emerald-200/80 bg-emerald-50/80",
     },
     {
       href: "/buy-signals",
       title: "Buy Signals",
       desc: "At or near all-time low",
-      count: meta.stats.buy_signals_count,
+      count: buySignals.length,
+      countLabel: "signals",
+      tone: "border-teal-200/80 bg-teal-50/80",
+    },
+    {
+      href: "/sold",
+      title: "Sold / Gone",
+      desc: "Removed from offer recently",
+      count: sold.sold_recent.length,
+      countLabel: "gone (48h)",
+      tone: "border-orange-200/80 bg-orange-50/80",
     },
     {
       href: "/products",
       title: "All Products",
       desc: "Full catalog with filters",
       count: meta.stats.total_products,
+      countLabel: "products",
+      tone: "border-slate-200/80 bg-slate-50/80",
     },
     {
       href: "/brands",
       title: "Brands",
       desc: "Browse by brand",
-      count: meta.brands.length,
+      count: meta.stats.brand_count || meta.brands.length,
+      countLabel: "brands",
+      tone: "border-slate-200/80 bg-slate-50/50",
     },
     {
       href: "/sizes",
       title: "Sizes",
       desc: "Filter by clothing & shoe size",
-      count: meta.stats.total_products,
+      count: catalog.sizeCount,
+      countLabel: "sizes",
+      tone: "border-slate-200/80 bg-slate-50/50",
     },
     {
       href: "/my-list",
       title: "My List",
-      desc: "Liked products & price changes",
-      count: meta.stats.price_changes_today,
+      desc: "Your liked products & alerts",
+      count: 0,
+      countLabel: "saved",
+      tone: "border-violet-200/80 bg-violet-50/80",
+      watchlist: true,
     },
   ];
 
@@ -64,27 +99,21 @@ export default async function HomePage() {
       stats={meta.stats}
       source={meta.source}
       generatedAt={meta.generated_at}
+      counts={{
+        best_deals: bestDeals.length,
+        buy_signals: buySignals.length,
+        changes: drops.length,
+      }}
     >
       <StatsCards
-        stats={meta.stats}
+        stats={{
+          ...meta.stats,
+          sold_recent_24h: sold.sold_recent_24h,
+        }}
         generatedAt={formatDate(meta.generated_at)}
       />
 
-      <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        {quickLinks.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className="min-h-[88px] rounded-2xl border border-black/10 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:min-h-0 sm:p-6"
-          >
-            <p className="text-[10px] uppercase tracking-wide text-gl-gold sm:text-xs">
-              {link.count.toLocaleString()} items
-            </p>
-            <h2 className="mt-1 font-display text-base sm:text-xl">{link.title}</h2>
-            <p className="mt-1 text-xs text-neutral-500 sm:text-sm">{link.desc}</p>
-          </Link>
-        ))}
-      </section>
+      <OverviewQuickLinks links={quickLinks} />
 
       <OverviewExtras meta={meta} drops={drops} />
     </PageShell>

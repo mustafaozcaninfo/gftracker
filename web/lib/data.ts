@@ -62,6 +62,33 @@ export async function loadBestDeals(): Promise<Product[]> {
   }
 }
 
+export async function loadBuySignals(): Promise<Product[]> {
+  try {
+    const data = await readJson<{ buy_signals: Product[] }>("buy_signals.json");
+    return data.buy_signals;
+  } catch {
+    return [];
+  }
+}
+
+export async function loadCatalogCounts(): Promise<{
+  sizeCount: number;
+  genderCount: number;
+}> {
+  try {
+    const data = await readJson<{
+      sizes?: string[];
+      genders?: string[];
+    }>("products.json");
+    return {
+      sizeCount: data.sizes?.length ?? 0,
+      genderCount: data.genders?.length ?? 0,
+    };
+  } catch {
+    return { sizeCount: 0, genderCount: 0 };
+  }
+}
+
 export async function loadBiggestDrops(): Promise<PriceDrop[]> {
   try {
     const data = await readJson<{ biggest_drops: PriceDrop[] }>("biggest_drops.json");
