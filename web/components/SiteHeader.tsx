@@ -13,6 +13,7 @@ const NAV = [
   { href: "/products", label: "All Products", countKey: "products" as const },
   { href: "/brands", label: "Brands" },
   { href: "/sizes", label: "Sizes" },
+  { href: "/compare", label: "Compare" },
   { href: "/my-list", label: "My List", watchlist: true },
 ];
 

@@ -14,6 +14,7 @@ import {
   buildProductsHref,
   parseProductFilters,
 } from "@/lib/product-filters";
+import { productGender } from "@/lib/gender";
 import {
   SIZE_FILTER_MULTI,
   SIZE_FILTER_ONE,
@@ -42,7 +43,8 @@ export function ProductGrid({ brands }: ProductGridProps) {
     () => parseProductFilters(searchParams),
     [searchParams],
   );
-  const { brand, size, maxprice, mindisc: minDiscount, sort } = filters;
+  const { brand, size, gender, maxprice, mindisc: minDiscount, sort } = filters;
+  const [genderOptions, setGenderOptions] = useState<string[]>([]);
 
   const [query, setQuery] = useState(filters.search);
   const deferredQuery = useDeferredValue(query);
@@ -56,6 +58,7 @@ export function ProductGrid({ brands }: ProductGridProps) {
       search: string;
       brand: string;
       size: string;
+      gender: typeof filters.gender;
       maxprice: number;
       mindisc: number;
       sort: SortKey;
@@ -64,6 +67,7 @@ export function ProductGrid({ brands }: ProductGridProps) {
         search: patch.search ?? filters.search,
         brand: patch.brand ?? filters.brand,
         size: patch.size ?? filters.size,
+        gender: patch.gender ?? filters.gender,
         maxprice: patch.maxprice ?? filters.maxprice,
         mindisc: patch.mindisc ?? filters.mindisc,
         sort: patch.sort ?? filters.sort,
@@ -88,9 +92,20 @@ export function ProductGrid({ brands }: ProductGridProps) {
         if (!res.ok) throw new Error("Failed to load products");
         return res.json();
       })
-      .then((data: { products: Product[]; sizes?: string[] }) => {
+      .then((data: { products: Product[]; sizes?: string[]; genders?: string[] }) => {
         if (!cancelled) {
           setProducts(data.products);
+          setGenderOptions(
+            data.genders?.length
+              ? data.genders
+              : [
+                  ...new Set(
+                    data.products
+                      .map((product) => productGender(product))
+                      .filter(Boolean),
+                  ),
+                ].sort(),
+          );
           const fromCatalog = data.sizes?.length
             ? data.sizes
             : [
@@ -117,6 +132,7 @@ export function ProductGrid({ brands }: ProductGridProps) {
 
     const list = products.filter((p) => {
       if (brand !== "all" && p.brand !== brand) return false;
+      if (gender !== "all" && productGender(p) !== gender) return false;
       if (!productMatchesSize(p, size)) return false;
       if (maxprice > 0 && (p.current_price ?? 0) > maxprice) return false;
       if ((p.discount_percent ?? 0) < minDiscount) return false;
@@ -143,11 +159,11 @@ export function ProductGrid({ brands }: ProductGridProps) {
           );
       }
     });
-  }, [products, deferredQuery, brand, size, maxprice, minDiscount, sort]);
+  }, [products, deferredQuery, brand, size, gender, maxprice, minDiscount, sort]);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [deferredQuery, brand, size, maxprice, minDiscount, sort]);
+  }, [deferredQuery, brand, size, gender, maxprice, minDiscount, sort]);
 
   const visible = filtered.slice(0, visibleCount);
   const hasMore = visibleCount < filtered.length;
@@ -217,6 +233,28 @@ export function ProductGrid({ brands }: ProductGridProps) {
             ))}
           </select>
         </label>
+
+        {genderOptions.length > 0 && (
+          <label className="space-y-1.5 text-sm">
+            <span className="text-neutral-500">Gender</span>
+            <select
+              value={gender}
+              onChange={(e) =>
+                updateFilters({
+                  gender: e.target.value as typeof filters.gender,
+                })
+              }
+              className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
+            >
+              <option value="all">All</option>
+              {genderOptions.map((g) => (
+                <option key={g} value={g}>
+                  {g.charAt(0).toUpperCase() + g.slice(1)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <label className="space-y-1.5 text-sm">
           <span className="text-neutral-500">Size</span>

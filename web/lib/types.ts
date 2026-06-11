@@ -10,6 +10,8 @@ export interface Product {
   image_url?: string;
   sizes?: string[];
   is_one_size?: boolean;
+  gender?: string;
+  sparkline?: number[];
   timestamp: string;
   page: number;
   lowest_price?: number;

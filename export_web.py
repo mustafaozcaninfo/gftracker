@@ -111,10 +111,19 @@ def export_dashboard(
     sizes_sorted = sorted(size_labels, key=_size_sort_key)
 
     size_counts: dict[str, int] = {}
+    gender_counts: dict[str, int] = {}
     for product in payload["products"]:
         for size in product.get("sizes") or []:
             if size:
                 size_counts[size] = size_counts.get(size, 0) + 1
+        gender = product.get("gender") or ""
+        if gender:
+            gender_counts[gender] = gender_counts.get(gender, 0) + 1
+
+    histories = store.export_price_histories(max_points=14)
+    for product in payload["products"]:
+        hist = histories.get(product["product_id"], [])
+        product["sparkline"] = [point[1] for point in hist[-14:]]
 
     (out_dir / "products.json").write_text(
         json.dumps(
@@ -123,6 +132,8 @@ def export_dashboard(
                 "brands": payload["brands"],
                 "sizes": sizes_sorted,
                 "size_counts": size_counts,
+                "genders": sorted(gender_counts.keys()),
+                "gender_counts": gender_counts,
             },
             ensure_ascii=False,
         ),
@@ -145,7 +156,6 @@ def export_dashboard(
         encoding="utf-8",
     )
 
-    histories = store.export_price_histories()
     (out_dir / "price_histories.json").write_text(
         json.dumps({"histories": histories}, ensure_ascii=False),
         encoding="utf-8",

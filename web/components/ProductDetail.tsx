@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Product } from "@/lib/types";
 import { formatQAR } from "@/lib/format";
+import { productGender } from "@/lib/gender";
 import { buildProductsHref } from "@/lib/product-filters";
 import { BrandLink } from "./BrandLink";
 import { GoogleLensButton } from "./GoogleLensButton";
 import { LikeButton } from "./LikeButton";
 import { PriceHistoryChart } from "./PriceHistoryChart";
+import { PriceSparkline } from "./PriceSparkline";
 import { SimilarProducts } from "./SimilarProducts";
 
 interface ProductDetailProps {
@@ -114,10 +116,27 @@ export function ProductDetail({ productId }: ProductDetailProps) {
             </p>
           )}
 
-          <div className="space-y-1">
-            <p className="font-display text-3xl text-gl-black">
-              {formatQAR(product.current_price)}
+          {productGender(product) && (
+            <p className="text-sm text-neutral-600">
+              <span className="font-medium text-neutral-500">Gender: </span>
+              <Link
+                href={buildProductsHref({ gender: productGender(product) as "men" | "women" | "kids" | "unisex" })}
+                className="capitalize hover:underline"
+              >
+                {productGender(product)}
+              </Link>
             </p>
+          )}
+
+          <div className="space-y-1">
+            <div className="flex items-end gap-3">
+              <p className="font-display text-3xl text-gl-black">
+                {formatQAR(product.current_price)}
+              </p>
+              {product.sparkline && product.sparkline.length >= 2 && (
+                <PriceSparkline values={product.sparkline} className="mb-1" />
+              )}
+            </div>
             <p className="text-neutral-400 line-through">
               {formatQAR(product.old_price)}
             </p>

@@ -2,7 +2,9 @@ import Link from "next/link";
 import type { Product } from "@/lib/types";
 import { formatQAR } from "@/lib/format";
 import { BrandLink } from "./BrandLink";
+import { CompareToggle } from "./CompareToggle";
 import { LikeButton } from "./LikeButton";
+import { PriceSparkline } from "./PriceSparkline";
 import { ProductImageSection } from "./ProductImageSection";
 
 interface ProductCardProps {
@@ -38,6 +40,7 @@ export function ProductCard({
           />
         </div>
         <div className="flex shrink-0 items-start gap-2">
+          <CompareToggle productId={product.product_id} />
           {showLike && <LikeButton product={product} />}
           <div className="flex flex-col items-end gap-1">
           {atLowest && (
@@ -82,9 +85,14 @@ export function ProductCard({
         )}
 
         <div className="mt-auto space-y-0.5 sm:space-y-1">
-          <p className="font-display text-xl text-gl-black sm:text-2xl">
-            {formatQAR(product.current_price)}
-          </p>
+          <div className="flex items-end justify-between gap-2">
+            <p className="font-display text-xl text-gl-black sm:text-2xl">
+              {formatQAR(product.current_price)}
+            </p>
+            {product.sparkline && product.sparkline.length >= 2 && (
+              <PriceSparkline values={product.sparkline} />
+            )}
+          </div>
           <p className="text-xs text-neutral-400 line-through sm:text-sm">
             {formatQAR(product.old_price)}
           </p>

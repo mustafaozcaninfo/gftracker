@@ -17,6 +17,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from gender import infer_gender
+
 
 @dataclass
 class Product:
@@ -32,6 +34,7 @@ class Product:
     page: int
     image_url: str = ""
     sizes: list[str] = field(default_factory=list)
+    gender: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -164,6 +167,10 @@ class ProductStore:
         if "sizes_json" not in product_cols:
             conn.execute(
                 "ALTER TABLE products ADD COLUMN sizes_json TEXT NOT NULL DEFAULT '[]'"
+            )
+        if "gender" not in product_cols:
+            conn.execute(
+                "ALTER TABLE products ADD COLUMN gender TEXT NOT NULL DEFAULT ''"
             )
 
     @staticmethod
@@ -447,8 +454,8 @@ class ProductStore:
                         """
                         INSERT INTO products (
                             product_id, sku, name, brand, url, image_url, sizes_json,
-                            first_seen_at, last_seen_at, is_active
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                            gender, first_seen_at, last_seen_at, is_active
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
                         """,
                         (
                             product.product_id,
@@ -458,6 +465,7 @@ class ProductStore:
                             product.url,
                             product.image_url,
                             self._sizes_payload(product.sizes),
+                            product.gender or infer_gender(product.name, product.brand),
                             product.timestamp,
                             product.timestamp,
                         ),
@@ -472,6 +480,7 @@ class ProductStore:
                                 ELSE image_url
                             END,
                             sizes_json = ?,
+                            gender = ?,
                             last_seen_at = ?, is_active = 1
                         WHERE product_id = ?
                         """,
@@ -483,6 +492,7 @@ class ProductStore:
                             product.image_url,
                             product.image_url,
                             self._sizes_payload(product.sizes),
+                            product.gender or infer_gender(product.name, product.brand),
                             product.timestamp,
                             product.product_id,
                         ),
@@ -615,7 +625,7 @@ class ProductStore:
                 """
                 SELECT
                     p.product_id, p.sku, p.name, p.brand, p.url, p.image_url,
-                    p.sizes_json,
+                    p.sizes_json, p.gender,
                     p.first_seen_at, p.last_seen_at, p.is_active,
                     dp.current_price, dp.old_price, dp.discount_percent,
                     dp.page, dp.scraped_at AS timestamp, dp.price_date,
@@ -636,6 +646,10 @@ class ProductStore:
             sizes = self._parse_sizes_json(item.pop("sizes_json", "[]"))
             item["sizes"] = sizes
             item["is_one_size"] = self._is_one_size(sizes)
+            gender = (item.get("gender") or "").strip()
+            if not gender:
+                gender = infer_gender(item.get("name", ""), item.get("brand", ""))
+            item["gender"] = gender
             low = lows.get(item["product_id"])
             current = item.get("current_price")
 

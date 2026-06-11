@@ -15,6 +15,9 @@ const BUDGET_LINKS = [
   { label: "Under 500 QAR", maxprice: 500 },
   { label: "Under 1,000 QAR", maxprice: 1000 },
   { label: "50%+ off", mindisc: 50 },
+  { label: "Women", gender: "women" as const },
+  { label: "Men", gender: "men" as const },
+  { label: "Kids", gender: "kids" as const },
 ];
 
 export function OverviewExtras({ meta, drops }: OverviewExtrasProps) {
@@ -33,10 +36,10 @@ export function OverviewExtras({ meta, drops }: OverviewExtrasProps) {
           <h2 className="font-display text-xl">Quick filters</h2>
         </div>
         <div className="flex flex-wrap gap-2">
-          {BUDGET_LINKS.map(({ label, maxprice, mindisc }) => (
+          {BUDGET_LINKS.map(({ label, maxprice, mindisc, gender }) => (
             <Link
               key={label}
-              href={buildProductsHref({ maxprice, mindisc })}
+              href={buildProductsHref({ maxprice, mindisc, gender })}
               className="rounded-full bg-neutral-100 px-4 py-2 text-sm font-medium hover:bg-neutral-200"
             >
               {label}

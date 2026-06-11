@@ -15,6 +15,7 @@ import requests
 from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
 
+from gender import infer_gender
 from models import Product
 
 logger = logging.getLogger(__name__)
@@ -377,6 +378,7 @@ class OfferScraper:
             sku = self._extract_sku(item, product_id)
             image_url = self._extract_image_url(item, self.base_url)
             sizes = self._extract_sizes(item)
+            gender = infer_gender(name, brand)
 
             products.append(
                 Product(
@@ -392,6 +394,7 @@ class OfferScraper:
                     page=page,
                     image_url=image_url,
                     sizes=sizes,
+                    gender=gender,
                 )
             )
 
