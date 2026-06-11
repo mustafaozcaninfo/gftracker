@@ -101,38 +101,38 @@ export function ProductGrid({ brands }: ProductGridProps) {
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
             Catalog
           </p>
-          <h2 className="font-display text-2xl">All Products</h2>
+          <h2 className="font-display text-xl sm:text-2xl">All Products</h2>
         </div>
-        <p className="text-sm text-neutral-500">
+        <p className="text-xs text-neutral-500 sm:text-sm">
           Showing {visible.length.toLocaleString()} of {filtered.length.toLocaleString()}
           {filtered.length !== products.length &&
             ` (${products.length.toLocaleString()} total)`}
         </p>
       </div>
 
-      <div className="grid gap-3 rounded-2xl border border-black/10 bg-white p-4 md:grid-cols-2 lg:grid-cols-4">
-        <label className="space-y-1 text-sm">
+      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-black/10 bg-white p-3 sm:gap-3 sm:p-4 md:grid-cols-2 lg:grid-cols-4">
+        <label className="space-y-1.5 text-sm">
           <span className="text-neutral-500">Search</span>
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Brand, name, SKU..."
-            className="w-full rounded-xl border border-black/10 px-3 py-2 outline-none ring-gl-gold focus:ring-2"
+            className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
           />
         </label>
 
-        <label className="space-y-1 text-sm">
+        <label className="space-y-1.5 text-sm">
           <span className="text-neutral-500">Brand</span>
           <select
             value={brand}
             onChange={(e) => setBrand(e.target.value)}
-            className="w-full rounded-xl border border-black/10 px-3 py-2 outline-none ring-gl-gold focus:ring-2"
+            className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
           >
             <option value="all">All brands</option>
             {brands.map((b) => (
@@ -143,8 +143,13 @@ export function ProductGrid({ brands }: ProductGridProps) {
           </select>
         </label>
 
-        <label className="space-y-1 text-sm">
-          <span className="text-neutral-500">Min discount ({minDiscount}%)</span>
+        <label className="space-y-2 text-sm">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-neutral-500">Min discount</span>
+            <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium tabular-nums">
+              {minDiscount}%
+            </span>
+          </div>
           <input
             type="range"
             min={0}
@@ -152,16 +157,19 @@ export function ProductGrid({ brands }: ProductGridProps) {
             step={5}
             value={minDiscount}
             onChange={(e) => setMinDiscount(Number(e.target.value))}
-            className="w-full accent-gl-red"
+            className="mt-1 w-full"
+            aria-valuemin={0}
+            aria-valuemax={70}
+            aria-valuenow={minDiscount}
           />
         </label>
 
-        <label className="space-y-1 text-sm">
+        <label className="space-y-1.5 text-sm">
           <span className="text-neutral-500">Sort by</span>
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
-            className="w-full rounded-xl border border-black/10 px-3 py-2 outline-none ring-gl-gold focus:ring-2"
+            className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
           >
             <option value="discount">Highest discount</option>
             <option value="price_asc">Price: low to high</option>
@@ -177,7 +185,7 @@ export function ProductGrid({ brands }: ProductGridProps) {
         </p>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
             {visible.map((product, index) => (
               <ProductCard
                 key={product.product_id}
@@ -193,7 +201,7 @@ export function ProductGrid({ brands }: ProductGridProps) {
               <button
                 type="button"
                 onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
-                className="rounded-xl bg-gl-black px-6 py-3 text-sm font-medium text-white hover:bg-neutral-800"
+                className="min-h-11 w-full rounded-xl bg-gl-black px-6 py-3 text-sm font-medium text-white hover:bg-neutral-800 sm:w-auto"
               >
                 Load more ({Math.min(PAGE_SIZE, filtered.length - visibleCount)} more)
               </button>

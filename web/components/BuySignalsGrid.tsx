@@ -44,16 +44,16 @@ export function BuySignalsGrid() {
         <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
           Timing
         </p>
-        <h2 className="font-display text-2xl">
+        <h2 className="font-display text-xl sm:text-2xl">
           Buy Signals — At or Near All-Time Low
         </h2>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="mt-1 text-xs text-neutral-500 sm:text-sm">
           Showing {visible.length} of {signals.length} · within 2% of lowest
           tracked price.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
         {visible.map((product, index) => (
           <ProductCard
             key={product.product_id}
@@ -69,7 +69,7 @@ export function BuySignalsGrid() {
           <button
             type="button"
             onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
-            className="rounded-xl bg-gl-black px-6 py-3 text-sm font-medium text-white hover:bg-neutral-800"
+            className="min-h-11 w-full rounded-xl bg-gl-black px-6 py-3 text-sm font-medium text-white hover:bg-neutral-800 sm:w-auto"
           >
             Load more
           </button>

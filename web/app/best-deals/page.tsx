@@ -17,9 +17,9 @@ export default async function BestDealsPage() {
           <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
             Top picks
           </p>
-          <h2 className="font-display text-2xl">Today&apos;s Best Discounts</h2>
+          <h2 className="font-display text-xl sm:text-2xl">Today&apos;s Best Discounts</h2>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
           {deals.map((product, index) => (
             <ProductCard
               key={product.product_id}

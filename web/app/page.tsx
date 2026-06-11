@@ -45,18 +45,18 @@ export default async function HomePage() {
         generatedAt={formatDate(meta.generated_at)}
       />
 
-      <section className="grid gap-4 sm:grid-cols-2">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4">
         {quickLinks.map((link) => (
           <Link
             key={link.href}
             href={link.href}
-            className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            className="min-h-[88px] rounded-2xl border border-black/10 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:min-h-0 sm:p-6"
           >
-            <p className="text-xs uppercase tracking-wide text-gl-gold">
+            <p className="text-[10px] uppercase tracking-wide text-gl-gold sm:text-xs">
               {link.count.toLocaleString()} items
             </p>
-            <h2 className="mt-1 font-display text-xl">{link.title}</h2>
-            <p className="mt-1 text-sm text-neutral-500">{link.desc}</p>
+            <h2 className="mt-1 font-display text-base sm:text-xl">{link.title}</h2>
+            <p className="mt-1 text-xs text-neutral-500 sm:text-sm">{link.desc}</p>
           </Link>
         ))}
       </section>

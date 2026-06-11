@@ -17,26 +17,26 @@ const items = [
 export function StatsCards({ stats, generatedAt }: StatsCardsProps) {
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-2">
+      <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-2">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
             Live snapshot
           </p>
-          <h2 className="font-display text-2xl">Overview</h2>
+          <h2 className="font-display text-xl sm:text-2xl">Overview</h2>
         </div>
-        <p className="text-sm text-neutral-500">Updated {generatedAt}</p>
+        <p className="text-xs text-neutral-500 sm:text-sm">Updated {generatedAt}</p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-6">
         {items.map(({ key, label, suffix }) => (
           <article
             key={key}
-            className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm"
+            className="rounded-2xl border border-black/10 bg-white p-3 shadow-sm sm:p-4"
           >
-            <p className="text-xs uppercase tracking-wide text-neutral-500">
+            <p className="text-[10px] uppercase tracking-wide text-neutral-500 sm:text-xs">
               {label}
             </p>
-            <p className="mt-2 font-display text-3xl text-gl-black">
+            <p className="mt-1.5 font-display text-2xl text-gl-black sm:mt-2 sm:text-3xl">
               {stats[key]}
               {suffix}
             </p>
