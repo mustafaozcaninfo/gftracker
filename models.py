@@ -702,14 +702,29 @@ class ProductStore:
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def get_buy_signals(self, max_pct_above_lowest: float = 2.0) -> list[dict[str, Any]]:
+    def get_buy_signals(
+        self,
+        max_pct_above_lowest: float = 2.0,
+        min_days_tracked: int = 2,
+    ) -> list[dict[str, Any]]:
         """Products at or near their all-time low — good day to buy."""
         products = self.get_products_with_analytics()
-        return [
+        signals = [
             p
             for p in products
-            if p.get("is_at_lowest") or (p.get("pct_above_lowest", 100) <= max_pct_above_lowest)
+            if (p.get("days_tracked") or 0) >= min_days_tracked
+            and (
+                p.get("is_at_lowest")
+                or (p.get("pct_above_lowest", 100) <= max_pct_above_lowest)
+            )
         ]
+        signals.sort(
+            key=lambda p: (
+                p.get("pct_above_lowest") if p.get("pct_above_lowest") is not None else 999,
+                -(p.get("discount_percent") or 0),
+            )
+        )
+        return signals
 
     def save_daily_snapshot(self, products: list[Product], snapshot_dir: str | Path) -> Path:
         snapshot_path = Path(snapshot_dir)

@@ -29,9 +29,8 @@ export function BuySignalsGrid() {
   if (!signals.length) {
     return (
       <p className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center text-neutral-500">
-        Need multiple daily refreshes to detect lows. Run{" "}
-        <code className="rounded bg-black/5 px-1">tracker.py --update</code> once
-        per day.
+        No buy signals yet. Products need at least 2 days of price history before
+        all-time-low detection is meaningful — check back after tomorrow&apos;s hourly scrapes.
       </p>
     );
   }
@@ -48,8 +47,8 @@ export function BuySignalsGrid() {
           Buy Signals — At or Near All-Time Low
         </h2>
         <p className="mt-1 text-xs text-neutral-500 sm:text-sm">
-          Showing {visible.length} of {signals.length} · within 2% of lowest
-          tracked price.
+          Showing {visible.length} of {signals.length} · within 2% of lowest tracked
+          price (min. 2 days history).
         </p>
       </div>
 
