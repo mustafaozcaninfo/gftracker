@@ -1,15 +1,19 @@
-name: Daily GF Tracker
+name: Hourly GF Tracker
 
 on:
   schedule:
-    # Twice daily: 06:00 & 18:00 Qatar (UTC+3) = 03:00 & 15:00 UTC
-    - cron: "0 3,15 * * *"
+    # Every hour on the hour (UTC)
+    - cron: "0 * * * *"
   workflow_dispatch:
+
+concurrency:
+  group: gftracker-scrape-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   scrape-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
 
     steps:
       - uses: actions/checkout@v4

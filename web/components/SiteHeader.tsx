@@ -9,6 +9,7 @@ const NAV = [
   { href: "/", label: "Overview" },
   { href: "/best-deals", label: "Best Deals", countKey: "best_deals" as const },
   { href: "/biggest-drops", label: "Price Drops" },
+  { href: "/sold", label: "Sold" },
   { href: "/buy-signals", label: "Buy Signals", countKey: "buy_signals" as const },
   { href: "/products", label: "All Products", countKey: "products" as const },
   { href: "/brands", label: "Brands" },

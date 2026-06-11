@@ -771,6 +771,60 @@ class ProductStore:
         drops.sort(key=lambda row: row["drop_amount"], reverse=True)
         return drops[:limit]
 
+    def get_sold_products(self, limit: int = 200, recent_hours: int | None = None) -> list[dict[str, Any]]:
+        """Products no longer on the offer page (is_active=0) with last known price."""
+        query = """
+            SELECT
+                p.product_id, p.sku, p.name, p.brand, p.url, p.image_url,
+                p.sizes_json, p.gender, p.last_seen_at,
+                lp.current_price AS last_price,
+                lp.old_price AS last_old_price,
+                lp.discount_percent AS last_discount,
+                lp.price_date AS last_price_date
+            FROM products p
+            LEFT JOIN (
+                SELECT product_id, current_price, old_price, discount_percent, price_date,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY product_id
+                           ORDER BY price_date DESC, scraped_at DESC
+                       ) AS rn
+                FROM daily_prices
+            ) lp ON lp.product_id = p.product_id AND lp.rn = 1
+            WHERE p.is_active = 0
+        """
+        params: list[Any] = []
+        if recent_hours is not None:
+            query += " AND datetime(p.last_seen_at) >= datetime('now', ?)"
+            params.append(f"-{recent_hours} hours")
+        query += " ORDER BY p.last_seen_at DESC LIMIT ?"
+        params.append(limit)
+
+        with self._connect() as conn:
+            rows = conn.execute(query, params).fetchall()
+
+        result: list[dict[str, Any]] = []
+        for row in rows:
+            item = dict(row)
+            sizes = self._parse_sizes_json(item.pop("sizes_json", "[]"))
+            item["sizes"] = sizes
+            item["is_one_size"] = self._is_one_size(sizes)
+            gender = (item.get("gender") or "").strip()
+            if not gender:
+                gender = infer_gender(item.get("name", ""), item.get("brand", ""))
+            item["gender"] = gender
+            result.append(item)
+        return result
+
+    def count_sold_products(self, recent_hours: int | None = None) -> int:
+        query = "SELECT COUNT(*) AS c FROM products WHERE is_active = 0"
+        params: list[Any] = []
+        if recent_hours is not None:
+            query += " AND datetime(last_seen_at) >= datetime('now', ?)"
+            params.append(f"-{recent_hours} hours")
+        with self._connect() as conn:
+            row = conn.execute(query, params).fetchone()
+        return int(row["c"]) if row else 0
+
     def get_brand_stats(self) -> dict[str, dict[str, Any]]:
         products = self.get_products_with_analytics()
         stats: dict[str, dict[str, Any]] = {}

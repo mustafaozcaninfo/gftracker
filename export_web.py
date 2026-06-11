@@ -45,6 +45,9 @@ def build_dashboard_payload(
         "discount_buckets": discount_buckets,
         "high_discount_50_plus": sum(1 for d in discounts if d >= 50),
         "high_discount_60_plus": sum(1 for d in discounts if d >= 60),
+        "sold_recent_24h": store.count_sold_products(recent_hours=24),
+        "sold_recent_48h": store.count_sold_products(recent_hours=48),
+        "sold_total": store.count_sold_products(),
     }
 
     return {
@@ -147,6 +150,22 @@ def export_dashboard(
     biggest_drops = store.get_biggest_drops(limit=50)
     (out_dir / "biggest_drops.json").write_text(
         json.dumps({"biggest_drops": biggest_drops}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    sold_recent = store.get_sold_products(limit=100, recent_hours=48)
+    sold_all = store.get_sold_products(limit=200)
+    (out_dir / "sold_products.json").write_text(
+        json.dumps(
+            {
+                "sold_recent": sold_recent,
+                "sold_all": sold_all,
+                "sold_recent_24h": payload["stats"]["sold_recent_24h"],
+                "sold_recent_48h": payload["stats"]["sold_recent_48h"],
+                "sold_total": payload["stats"]["sold_total"],
+            },
+            ensure_ascii=False,
+        ),
         encoding="utf-8",
     )
 

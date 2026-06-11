@@ -58,6 +58,23 @@ export interface ScrapeRun {
   status: string;
 }
 
+export interface SoldProduct {
+  product_id: string;
+  sku: string;
+  name: string;
+  brand: string;
+  url: string;
+  image_url?: string;
+  sizes?: string[];
+  is_one_size?: boolean;
+  gender?: string;
+  last_seen_at: string;
+  last_price?: number;
+  last_old_price?: number;
+  last_discount?: number;
+  last_price_date?: string;
+}
+
 export interface DashboardStats {
   total_products: number;
   total_pages: number;
@@ -71,6 +88,9 @@ export interface DashboardStats {
   discount_buckets?: Record<string, number>;
   high_discount_50_plus?: number;
   high_discount_60_plus?: number;
+  sold_recent_24h?: number;
+  sold_recent_48h?: number;
+  sold_total?: number;
 }
 
 export interface DashboardData {

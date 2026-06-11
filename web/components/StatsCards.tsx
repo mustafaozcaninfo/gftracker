@@ -12,6 +12,7 @@ const items = [
   { key: "max_discount", label: "Best Discount", suffix: "%" },
   { key: "total_pages", label: "Offer Pages", suffix: "" },
   { key: "price_changes_today", label: "Changes Today", suffix: "" },
+  { key: "sold_recent_24h", label: "Sold (24h)", suffix: "" },
 ] as const;
 
 export function StatsCards({ stats, generatedAt }: StatsCardsProps) {
@@ -37,7 +38,7 @@ export function StatsCards({ stats, generatedAt }: StatsCardsProps) {
               {label}
             </p>
             <p className="mt-1.5 font-display text-2xl text-gl-black sm:mt-2 sm:text-3xl">
-              {stats[key]}
+              {(stats[key] ?? 0).toLocaleString()}
               {suffix}
             </p>
           </article>

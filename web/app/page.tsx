@@ -22,6 +22,12 @@ export default async function HomePage() {
       count: meta.stats.price_changes_today,
     },
     {
+      href: "/sold",
+      title: "Sold / Gone",
+      desc: "Removed from offer (last 48h)",
+      count: meta.stats.sold_recent_48h ?? 0,
+    },
+    {
       href: "/buy-signals",
       title: "Buy Signals",
       desc: "At or near all-time low",

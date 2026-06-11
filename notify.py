@@ -18,7 +18,9 @@ def build_summary_message(summary: dict[str, Any], stats: dict[str, Any]) -> str
         f"50%+ off: {stats.get('high_discount_50_plus', 0):,}",
         f"Pages scraped: {summary.get('pages_scraped', 0)}/{summary.get('total_pages', 0)}",
         f"Days tracked: {stats.get('days_tracked', 0)}",
-        "https://gftracker.vercel.app",
+        f"Sold (24h): {stats.get('sold_recent_24h', 0)}",
+        f"Sold (total gone): {stats.get('sold_total', 0)}",
+        "https://gftracker.vercel.app/sold",
     ]
     return "\n".join(lines)
 

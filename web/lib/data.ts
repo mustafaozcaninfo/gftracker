@@ -7,6 +7,7 @@ import type {
   PriceDrop,
   Product,
   ScrapeRun,
+  SoldProduct,
 } from "./types";
 
 const DATA_DIR = path.join(process.cwd(), "public", "data");
@@ -34,6 +35,9 @@ const emptyStats: DashboardStats = {
   price_changes_today: 0,
   buy_signals_count: 0,
   days_tracked: 0,
+  sold_recent_24h: 0,
+  sold_recent_48h: 0,
+  sold_total: 0,
 };
 
 export async function loadMeta(): Promise<MetaData> {
@@ -75,6 +79,28 @@ export async function loadBrandStats(): Promise<Record<string, BrandStats>> {
     return data.brands;
   } catch {
     return {};
+  }
+}
+
+export interface SoldProductsData {
+  sold_recent: SoldProduct[];
+  sold_all: SoldProduct[];
+  sold_recent_24h: number;
+  sold_recent_48h: number;
+  sold_total: number;
+}
+
+export async function loadSoldProducts(): Promise<SoldProductsData> {
+  try {
+    return await readJson<SoldProductsData>("sold_products.json");
+  } catch {
+    return {
+      sold_recent: [],
+      sold_all: [],
+      sold_recent_24h: 0,
+      sold_recent_48h: 0,
+      sold_total: 0,
+    };
   }
 }
 

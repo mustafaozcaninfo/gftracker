@@ -1,5 +1,5 @@
 const CACHE = "gftracker-v2";
-const PRECACHE = ["/", "/offline.html", "/data/meta.json"];
+const PRECACHE = ["/", "/offline.html", "/data/meta.json", "/data/sold_products.json"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
