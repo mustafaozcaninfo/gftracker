@@ -116,7 +116,7 @@ export function OverviewExtras({ meta, drops }: OverviewExtrasProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5">
-                {history.slice(0, 12).map((run) => {
+                {history.slice(0, 24).map((run) => {
                   const duration = formatScrapeDuration(
                     run.started_at,
                     run.completed_at,

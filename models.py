@@ -347,6 +347,11 @@ class ProductStore:
     def _yesterday() -> str:
         return (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
 
+    def checkpoint_wal(self) -> None:
+        """Flush WAL into the main DB file before CI cache upload."""
+        with self._connect() as conn:
+            conn.execute("PRAGMA wal_checkpoint(FULL)")
+
     def close_stale_scrape_runs(self, max_age_hours: int = 2) -> int:
         """Mark abandoned runs as failed (e.g. process killed mid-scrape)."""
         cutoff = (datetime.now() - timedelta(hours=max_age_hours)).isoformat(timespec="seconds")

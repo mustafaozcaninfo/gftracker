@@ -28,21 +28,28 @@ jobs:
       - name: Prepare data directory
         run: mkdir -p data
 
-      - name: Restore SQLite database cache
-        uses: actions/cache@v4
+      - name: Restore data cache
+        uses: actions/cache/restore@v4
         with:
-          path: data/products_history.db
-          key: gftracker-sqlite-${{ github.ref_name }}
+          path: data/
+          key: gftracker-data-v2-${{ github.ref_name }}
           restore-keys: |
-            gftracker-sqlite-${{ github.ref_name }}-
-            gftracker-sqlite-
+            gftracker-data-v2-${{ github.ref_name }}-
+            gftracker-data-v2-
 
-      - name: Daily scrape + export
+      - name: Hourly scrape + export
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python daily_tracker.py
+
+      - name: Save data cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data/
+          key: gftracker-data-v2-${{ github.ref_name }}
 
       - uses: actions/setup-node@v4
         with:

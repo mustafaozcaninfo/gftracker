@@ -11,15 +11,56 @@ import yaml
 
 from models import ProductStore
 
+SCRAPE_HISTORY_EXPORT_LIMIT = 48
+SCRAPE_HISTORY_BACKUP_LIMIT = 96
+
+
+def load_scrape_history_backup(data_dir: Path) -> dict[int, dict[str, Any]]:
+    path = data_dir / "scrape_history.json"
+    if not path.exists():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        runs = payload.get("runs", [])
+        return {
+            int(run["id"]): run
+            for run in runs
+            if isinstance(run, dict) and run.get("id") is not None
+        }
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return {}
+
+
+def merge_scrape_history(store: ProductStore, data_dir: Path) -> list[dict[str, Any]]:
+    """Merge DB runs with cached backup so hourly CI does not lose history."""
+    merged = load_scrape_history_backup(data_dir)
+    for run in store.get_scrape_history(limit=SCRAPE_HISTORY_BACKUP_LIMIT):
+        merged[int(run["id"])] = run
+    runs = sorted(merged.values(), key=lambda row: int(row["id"]), reverse=True)[
+        :SCRAPE_HISTORY_EXPORT_LIMIT
+    ]
+    data_dir.mkdir(parents=True, exist_ok=True)
+    (data_dir / "scrape_history.json").write_text(
+        json.dumps({"runs": runs}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    return runs
+
 
 def build_dashboard_payload(
     store: ProductStore,
     scrape_meta: dict[str, Any] | None = None,
+    *,
+    data_dir: Path | None = None,
 ) -> dict[str, Any]:
     products = store.get_products_with_analytics()
     price_changes = store.get_all_price_changes(limit=200)
     buy_signals = store.get_buy_signals()
-    scrape_history = store.get_scrape_history(limit=24)
+    scrape_history = (
+        merge_scrape_history(store, data_dir)
+        if data_dir is not None
+        else store.get_scrape_history(limit=SCRAPE_HISTORY_EXPORT_LIMIT)
+    )
 
     brands = sorted({p["brand"] for p in products if p.get("brand")})
     discounts = [p["discount_percent"] for p in products if p.get("discount_percent")]
@@ -72,7 +113,8 @@ def export_dashboard(
         config = yaml.safe_load(handle) or {}
 
     store = ProductStore(config["output"]["db_path"])
-    payload = build_dashboard_payload(store, scrape_meta=scrape_meta)
+    data_dir = Path(config["output"]["db_path"]).parent
+    payload = build_dashboard_payload(store, scrape_meta=scrape_meta, data_dir=data_dir)
 
     out_dir = Path(output_path).parent
     out_dir.mkdir(parents=True, exist_ok=True)

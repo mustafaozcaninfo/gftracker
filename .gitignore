@@ -3,6 +3,9 @@ __pycache__/
 *.pyc
 .DS_Store
 data/products_history.db
+data/products_history.db-wal
+data/products_history.db-shm
+data/scrape_history.json
 logs/
 config.test.yaml
 .env

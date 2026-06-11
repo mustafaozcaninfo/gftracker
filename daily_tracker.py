@@ -19,13 +19,16 @@ from notify import notify_daily_summary  # noqa: E402
 
 
 def main() -> int:
-    summary = run_update(config_path=ROOT / "config.yaml", verbose=False)
-    export_dashboard(config_path=ROOT / "config.yaml", scrape_meta=summary)
+    config_path = ROOT / "config.yaml"
+    summary = run_update(config_path=config_path, verbose=False)
+    export_dashboard(config_path=config_path, scrape_meta=summary)
 
-    with (ROOT / "config.yaml").open(encoding="utf-8") as handle:
+    with config_path.open(encoding="utf-8") as handle:
         config = yaml.safe_load(handle) or {}
     store = ProductStore(config["output"]["db_path"])
-    payload = build_dashboard_payload(store, scrape_meta=summary)
+    store.checkpoint_wal()
+    data_dir = Path(config["output"]["db_path"]).parent
+    payload = build_dashboard_payload(store, scrape_meta=summary, data_dir=data_dir)
     notify_daily_summary(summary, payload["stats"])
     print(
         "Daily scrape finished: "
