@@ -3,5 +3,6 @@
   "devCommand": "cd web && npm run dev",
   "installCommand": "cd web && npm ci",
   "outputDirectory": "web/.next",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "ignoreCommand": "exit 0"
 }
