@@ -1,10 +1,8 @@
 name: Hourly GF Tracker
 
 on:
-  schedule:
-    # Saatlik — :15 Qatar (GitHub :00 UTC'de sık drop ediyor)
-    - cron: "15 * * * *"
-      timezone: Asia/Qatar
+  # GitHub schedule bu private repoda güvenilir değil — Cloudflare Worker tetikliyor.
+  # workers/github-cron → repository_dispatch hourly-scrape
   workflow_dispatch:
   repository_dispatch:
     types: [hourly-scrape]

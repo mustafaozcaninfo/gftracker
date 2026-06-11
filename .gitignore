@@ -12,6 +12,7 @@ config.test.yaml
 .env.*
 
 web/node_modules/
+workers/github-cron/node_modules/
 web/.next/
 web/out/
 web/.vercel/

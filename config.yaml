@@ -20,9 +20,9 @@ scraper:
   max_delay: 0.35
   min_rate_limit: 0.15
   max_rate_limit: 0.45
-  max_retries: 2
-  retry_backoff: 0.8
-  timeout: 20
+  max_retries: 5
+  retry_backoff: 2.0
+  timeout: 30
   use_playwright: false
 
 proxies: []
