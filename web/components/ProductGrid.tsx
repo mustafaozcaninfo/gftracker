@@ -10,17 +10,22 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Product } from "@/lib/types";
 import {
+  deriveFilterFacets,
+  isBrandAvailable,
+  isGenderAvailable,
+  isSizeAvailable,
+  productMatchesFilters,
+} from "@/lib/catalog-filters";
+import {
   type SortKey,
   buildProductsHref,
   parseProductFilters,
 } from "@/lib/product-filters";
-import { productGender } from "@/lib/gender";
 import {
   SIZE_FILTER_MULTI,
   SIZE_FILTER_ONE,
-  productMatchesSize,
-  sortSizeLabels,
 } from "@/lib/sizes";
+import { ActiveFilterChips } from "./ActiveFilterChips";
 import { ProductCard } from "./ProductCard";
 
 const PAGE_SIZE = 24;
@@ -29,12 +34,11 @@ interface ProductGridProps {
   brands: string[];
 }
 
-export function ProductGrid({ brands }: ProductGridProps) {
+export function ProductGrid({ brands: _brands }: ProductGridProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [products, setProducts] = useState<Product[]>([]);
-  const [sizeOptions, setSizeOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -44,7 +48,6 @@ export function ProductGrid({ brands }: ProductGridProps) {
     [searchParams],
   );
   const { brand, size, gender, maxprice, mindisc: minDiscount, sort } = filters;
-  const [genderOptions, setGenderOptions] = useState<string[]>([]);
 
   const [query, setQuery] = useState(filters.search);
   const deferredQuery = useDeferredValue(query);
@@ -92,29 +95,8 @@ export function ProductGrid({ brands }: ProductGridProps) {
         if (!res.ok) throw new Error("Failed to load products");
         return res.json();
       })
-      .then((data: { products: Product[]; sizes?: string[]; genders?: string[] }) => {
-        if (!cancelled) {
-          setProducts(data.products);
-          setGenderOptions(
-            data.genders?.length
-              ? data.genders
-              : [
-                  ...new Set(
-                    data.products
-                      .map((product) => productGender(product))
-                      .filter(Boolean),
-                  ),
-                ].sort(),
-          );
-          const fromCatalog = data.sizes?.length
-            ? data.sizes
-            : [
-                ...new Set(
-                  data.products.flatMap((product) => product.sizes ?? []),
-                ),
-              ];
-          setSizeOptions(sortSizeLabels(fromCatalog));
-        }
+      .then((data: { products: Product[] }) => {
+        if (!cancelled) setProducts(data.products);
       })
       .catch((err: Error) => {
         if (!cancelled) setError(err.message);
@@ -127,22 +109,23 @@ export function ProductGrid({ brands }: ProductGridProps) {
     };
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = deferredQuery.trim().toLowerCase();
+  const facets = useMemo(
+    () => deriveFilterFacets(products, filters, deferredQuery),
+    [products, filters, deferredQuery],
+  );
 
-    const list = products.filter((p) => {
-      if (brand !== "all" && p.brand !== brand) return false;
-      if (gender !== "all" && productGender(p) !== gender) return false;
-      if (!productMatchesSize(p, size)) return false;
-      if (maxprice > 0 && (p.current_price ?? 0) > maxprice) return false;
-      if ((p.discount_percent ?? 0) < minDiscount) return false;
-      if (!q) return true;
-      return (
-        p.name.toLowerCase().includes(q) ||
-        p.brand.toLowerCase().includes(q) ||
-        p.sku.includes(q)
-      );
-    });
+  useEffect(() => {
+    const patches: Partial<typeof filters> = {};
+    if (!isBrandAvailable(brand, facets)) patches.brand = "all";
+    if (!isGenderAvailable(gender, facets)) patches.gender = "all";
+    if (!isSizeAvailable(size, facets)) patches.size = "all";
+    if (Object.keys(patches).length > 0) updateFilters(patches);
+  }, [facets, brand, gender, size, updateFilters]);
+
+  const filtered = useMemo(() => {
+    const list = products.filter((p) =>
+      productMatchesFilters(p, filters, deferredQuery),
+    );
 
     return list.sort((a, b) => {
       switch (sort) {
@@ -159,7 +142,7 @@ export function ProductGrid({ brands }: ProductGridProps) {
           );
       }
     });
-  }, [products, deferredQuery, brand, size, gender, maxprice, minDiscount, sort]);
+  }, [products, deferredQuery, filters, sort]);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
@@ -192,11 +175,6 @@ export function ProductGrid({ brands }: ProductGridProps) {
             Catalog
           </p>
           <h2 className="font-display text-xl sm:text-2xl">All Products</h2>
-          {brand !== "all" && (
-            <p className="mt-1 text-sm text-neutral-600">
-              Brand: <span className="font-medium">{brand}</span>
-            </p>
-          )}
         </div>
         <p className="text-xs text-neutral-500 sm:text-sm">
           Showing {visible.length.toLocaleString()} of{" "}
@@ -205,6 +183,8 @@ export function ProductGrid({ brands }: ProductGridProps) {
             ` (${products.length.toLocaleString()} total)`}
         </p>
       </div>
+
+      <ActiveFilterChips filters={filters} searchQuery={deferredQuery} />
 
       <div className="grid grid-cols-1 gap-4 rounded-2xl border border-black/10 bg-white p-3 sm:gap-3 sm:p-4 md:grid-cols-2 xl:grid-cols-3">
         <label className="space-y-1.5 text-sm">
@@ -219,14 +199,19 @@ export function ProductGrid({ brands }: ProductGridProps) {
         </label>
 
         <label className="space-y-1.5 text-sm">
-          <span className="text-neutral-500">Brand</span>
+          <span className="text-neutral-500">
+            Brand
+            {facets.brands.length > 0 && facets.brands.length < products.length && (
+              <span className="ml-1 text-neutral-400">({facets.brands.length})</span>
+            )}
+          </span>
           <select
             value={brand}
-            onChange={(e) => updateFilters({ brand: e.target.value })}
+            onChange={(e) => updateFilters({ brand: e.target.value, size: "all" })}
             className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
           >
             <option value="all">All brands</option>
-            {brands.map((b) => (
+            {facets.brands.map((b) => (
               <option key={b} value={b}>
                 {b}
               </option>
@@ -234,20 +219,26 @@ export function ProductGrid({ brands }: ProductGridProps) {
           </select>
         </label>
 
-        {genderOptions.length > 0 && (
+        {facets.genders.length > 0 && (
           <label className="space-y-1.5 text-sm">
-            <span className="text-neutral-500">Gender</span>
+            <span className="text-neutral-500">
+              Gender
+              {facets.genders.length < 4 && (
+                <span className="ml-1 text-neutral-400">({facets.genders.length})</span>
+              )}
+            </span>
             <select
               value={gender}
               onChange={(e) =>
                 updateFilters({
                   gender: e.target.value as typeof filters.gender,
+                  size: "all",
                 })
               }
               className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
             >
               <option value="all">All</option>
-              {genderOptions.map((g) => (
+              {facets.genders.map((g) => (
                 <option key={g} value={g}>
                   {g.charAt(0).toUpperCase() + g.slice(1)}
                 </option>
@@ -257,18 +248,27 @@ export function ProductGrid({ brands }: ProductGridProps) {
         )}
 
         <label className="space-y-1.5 text-sm">
-          <span className="text-neutral-500">Size</span>
+          <span className="text-neutral-500">
+            Size
+            {facets.sizes.length > 0 && (
+              <span className="ml-1 text-neutral-400">({facets.sizes.length})</span>
+            )}
+          </span>
           <select
             value={size}
             onChange={(e) => updateFilters({ size: e.target.value })}
             className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
           >
             <option value="all">All sizes</option>
-            <option value={SIZE_FILTER_ONE}>One Size</option>
-            <option value={SIZE_FILTER_MULTI}>Multiple sizes</option>
-            {sizeOptions.length > 0 && (
+            {facets.hasOneSize && (
+              <option value={SIZE_FILTER_ONE}>One Size</option>
+            )}
+            {facets.hasMultiSize && (
+              <option value={SIZE_FILTER_MULTI}>Multiple sizes</option>
+            )}
+            {facets.sizes.length > 0 && (
               <optgroup label="Specific size">
-                {sizeOptions.map((label) => (
+                {facets.sizes.map((label) => (
                   <option key={label} value={label}>
                     {label}
                   </option>
