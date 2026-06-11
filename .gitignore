@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+data/products_history.db
+logs/
+config.test.yaml
+.env
+.env.*
+
+web/node_modules/
+web/.next/
+web/out/
+web/.vercel/

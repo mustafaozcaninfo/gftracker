@@ -1,0 +1,19 @@
+import type { Metadata } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "GF Tracker — Galeries Lafayette Qatar Deals",
+  description: "Daily discounted product tracker for Galeries Lafayette Qatar",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body className="min-h-screen font-sans">{children}</body>
+    </html>
+  );
+}

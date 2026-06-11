@@ -1,0 +1,35 @@
+base_url: "https://www.galerieslafayette.qa"
+offer_path: "/offer.html"
+offer_params:
+  is_scroll: "1"
+
+# Pagination: 0 = auto-detect from k-page-count (152 pages)
+max_pages: 0
+
+# false = all products on offer pages | true = only % Off badge items
+discounted_only: false
+
+output:
+  db_path: "data/products_history.db"
+  snapshot_dir: "data"
+
+scraper:
+  # stealth | normal | turbo  (turbo ≈ 3-5 min for 152 pages)
+  speed: turbo
+  min_delay: 0.2
+  max_delay: 0.6
+  min_rate_limit: 0.3
+  max_rate_limit: 0.8
+  max_retries: 3
+  retry_backoff: 1.0
+  timeout: 30
+  use_playwright: false
+
+proxies: []
+# Example:
+# proxies:
+#   - "http://user:pass@proxy1.example.com:8080"
+#   - "http://user:pass@proxy2.example.com:8080"
+
+report:
+  top_n: 20
