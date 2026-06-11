@@ -75,9 +75,17 @@ def run_update(config_path: str | Path = "config.yaml", verbose: bool = False) -
                 run_id, pages_scraped=pages_ok, products_found=len(all_products)
             )
 
-        store.record_daily_scrape(
-            [], run_id, finalize=True, all_seen_ids=list(dict.fromkeys(all_ids))
-        )
+        if pages_failed == 0 and total_pages > 0 and pages_ok >= total_pages:
+            store.record_daily_scrape(
+                [], run_id, finalize=True, all_seen_ids=list(dict.fromkeys(all_ids))
+            )
+        else:
+            logger.warning(
+                "Skipping sold/gone finalize: pages_ok=%s total_pages=%s pages_failed=%s",
+                pages_ok,
+                total_pages,
+                pages_failed,
+            )
         store.complete_scrape_run(
             run_id,
             pages_scraped=pages_ok,

@@ -95,7 +95,7 @@ const TONE: Record<NavTone, { idle: string; active: string }> = {
 
 interface SiteHeaderProps {
   stats: DashboardStats;
-  counts?: Partial<Record<"best_deals" | "buy_signals" | "products" | "changes", number>>;
+  counts?: Partial<Record<"best_deals" | "buy_signals" | "products" | "changes" | "sold", number>>;
 }
 
 export function SiteHeader({ stats, counts = {} }: SiteHeaderProps) {
@@ -108,7 +108,7 @@ export function SiteHeader({ stats, counts = {} }: SiteHeaderProps) {
     if (key === "buy_signals") return counts.buy_signals ?? stats.buy_signals_count;
     if (key === "products") return counts.products ?? stats.total_products;
     if (key === "changes") return counts.changes ?? stats.price_changes_today;
-    if (key === "sold") return stats.sold_recent_24h ?? 0;
+    if (key === "sold") return stats.sold_recent_48h ?? 0;
     return undefined;
   };
 

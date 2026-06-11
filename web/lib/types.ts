@@ -69,6 +69,7 @@ export interface SoldProduct {
   is_one_size?: boolean;
   gender?: string;
   last_seen_at: string;
+  removed_at?: string;
   last_price?: number;
   last_old_price?: number;
   last_discount?: number;

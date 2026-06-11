@@ -10,7 +10,7 @@ export default async function SoldPage() {
       stats={meta.stats}
       source={meta.source}
       generatedAt={meta.generated_at}
-      counts={{ changes: sold.sold_recent_24h }}
+      counts={{ sold: sold.sold_recent_48h }}
     >
       <section className="space-y-4">
         <div>

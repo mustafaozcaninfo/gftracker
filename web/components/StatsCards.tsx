@@ -14,7 +14,7 @@ const items: {
   { key: "total_products", label: "Products", accent: "border-l-slate-400" },
   { key: "buy_signals_count", label: "Buy signals", accent: "border-l-teal-500" },
   { key: "price_changes_today", label: "Changes", accent: "border-l-emerald-500" },
-  { key: "sold_recent_24h", label: "Sold 24h", accent: "border-l-orange-500" },
+  { key: "sold_recent_48h", label: "Gone 48h", accent: "border-l-orange-500" },
   { key: "max_discount", label: "Top disc.", suffix: "%", accent: "border-l-amber-500" },
   { key: "days_tracked", label: "Days", accent: "border-l-neutral-400" },
 ];

@@ -172,6 +172,8 @@ class ProductStore:
             conn.execute(
                 "ALTER TABLE products ADD COLUMN gender TEXT NOT NULL DEFAULT ''"
             )
+        if "removed_at" not in product_cols:
+            conn.execute("ALTER TABLE products ADD COLUMN removed_at TEXT")
 
     @staticmethod
     def _parse_sizes_json(raw: str | None) -> list[str]:
@@ -421,14 +423,17 @@ class ProductStore:
         """Mark products missing from the latest full scrape as inactive."""
         if not seen_product_ids:
             return
+        now = datetime.now().isoformat(timespec="seconds")
         with self._connect() as conn:
             placeholders = ",".join("?" * len(seen_product_ids))
             conn.execute(
                 f"""
-                UPDATE products SET is_active = 0
+                UPDATE products
+                SET is_active = 0, removed_at = ?
                 WHERE product_id NOT IN ({placeholders})
+                  AND is_active = 1
                 """,
-                seen_product_ids,
+                [now, *seen_product_ids],
             )
 
     def record_daily_scrape(
@@ -486,7 +491,7 @@ class ProductStore:
                             END,
                             sizes_json = ?,
                             gender = ?,
-                            last_seen_at = ?, is_active = 1
+                            last_seen_at = ?, is_active = 1, removed_at = NULL
                         WHERE product_id = ?
                         """,
                         (
@@ -781,7 +786,7 @@ class ProductStore:
         query = """
             SELECT
                 p.product_id, p.sku, p.name, p.brand, p.url, p.image_url,
-                p.sizes_json, p.gender, p.last_seen_at,
+                p.sizes_json, p.gender, p.last_seen_at, p.removed_at,
                 lp.current_price AS last_price,
                 lp.old_price AS last_old_price,
                 lp.discount_percent AS last_discount,
@@ -799,9 +804,9 @@ class ProductStore:
         """
         params: list[Any] = []
         if recent_hours is not None:
-            query += " AND datetime(p.last_seen_at) >= datetime('now', ?)"
+            query += " AND datetime(COALESCE(p.removed_at, p.last_seen_at)) >= datetime('now', ?)"
             params.append(f"-{recent_hours} hours")
-        query += " ORDER BY p.last_seen_at DESC LIMIT ?"
+        query += " ORDER BY COALESCE(p.removed_at, p.last_seen_at) DESC LIMIT ?"
         params.append(limit)
 
         with self._connect() as conn:
@@ -824,7 +829,7 @@ class ProductStore:
         query = "SELECT COUNT(*) AS c FROM products WHERE is_active = 0"
         params: list[Any] = []
         if recent_hours is not None:
-            query += " AND datetime(last_seen_at) >= datetime('now', ?)"
+            query += " AND datetime(COALESCE(removed_at, last_seen_at)) >= datetime('now', ?)"
             params.append(f"-{recent_hours} hours")
         with self._connect() as conn:
             row = conn.execute(query, params).fetchone()

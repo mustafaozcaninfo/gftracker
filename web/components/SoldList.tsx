@@ -139,7 +139,9 @@ function SoldCard({ item }: { item: SoldProduct }) {
           </p>
         )}
         <p className="text-[11px] text-neutral-500">
-          Last seen {formatDate(item.last_seen_at)}
+          {item.removed_at
+            ? `Removed ${formatDate(item.removed_at)}`
+            : `Last seen ${formatDate(item.last_seen_at)}`}
         </p>
         <div className="flex flex-wrap gap-2 pt-1">
           <Link

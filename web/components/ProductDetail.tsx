@@ -3,8 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { Product } from "@/lib/types";
-import { formatQAR } from "@/lib/format";
+import type { Product, SoldProduct } from "@/lib/types";
+import { formatDate, formatQAR } from "@/lib/format";
 import { productGender } from "@/lib/gender";
 import { buildProductsHref } from "@/lib/product-filters";
 import { BrandLink } from "./BrandLink";
@@ -20,6 +20,7 @@ interface ProductDetailProps {
 
 export function ProductDetail({ productId }: ProductDetailProps) {
   const [product, setProduct] = useState<Product | null>(null);
+  const [sold, setSold] = useState<SoldProduct | null>(null);
   const [history, setHistory] = useState<Array<[string, number, number]>>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,13 +29,24 @@ export function ProductDetail({ productId }: ProductDetailProps) {
     Promise.all([
       fetch("/data/products.json").then((r) => r.json()),
       fetch("/data/price_histories.json").then((r) => r.json()),
+      fetch("/data/sold_products.json").then((r) => r.json()),
     ])
-      .then(([productsData, historyData]) => {
+      .then(([productsData, historyData, soldData]) => {
         if (cancelled) return;
         const found = (productsData.products as Product[]).find(
           (p) => p.product_id === productId,
         );
-        setProduct(found ?? null);
+        if (found) {
+          setProduct(found);
+          setSold(null);
+        } else {
+          const gone = [
+            ...(soldData.sold_recent as SoldProduct[]),
+            ...(soldData.sold_all as SoldProduct[]),
+          ].find((p) => p.product_id === productId);
+          setProduct(null);
+          setSold(gone ?? null);
+        }
         setHistory(
           (historyData.histories?.[productId] as Array<[string, number, number]>) ??
             [],
@@ -56,7 +68,7 @@ export function ProductDetail({ productId }: ProductDetailProps) {
     );
   }
 
-  if (!product) {
+  if (!product && !sold) {
     return (
       <div className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center">
         <p className="text-neutral-600">Product not found.</p>
@@ -68,6 +80,62 @@ export function ProductDetail({ productId }: ProductDetailProps) {
         </Link>
       </div>
     );
+  }
+
+  if (sold && !product) {
+    return (
+      <section className="space-y-6">
+        <Link href="/sold" className="text-sm text-neutral-500 hover:text-neutral-800">
+          ← Sold / gone
+        </Link>
+        <div className="rounded-2xl border border-orange-200/80 bg-orange-50/60 p-4 text-sm text-orange-900">
+          This item is no longer on the offer page — likely sold out or delisted.
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-black/10 bg-neutral-100">
+            {sold.image_url ? (
+              <Image
+                src={sold.image_url}
+                alt={sold.name}
+                fill
+                className="object-cover object-top opacity-80 grayscale"
+                unoptimized
+                priority
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-neutral-400">
+                No image
+              </div>
+            )}
+          </div>
+          <div className="space-y-4">
+            <BrandLink brand={sold.brand} />
+            <h1 className="font-display text-2xl leading-tight">{sold.name}</h1>
+            {sold.last_price != null && (
+              <p className="text-xl font-medium">{formatQAR(sold.last_price)}</p>
+            )}
+            <p className="text-sm text-neutral-600">
+              {sold.removed_at
+                ? `Removed ${formatDate(sold.removed_at)}`
+                : `Last seen ${formatDate(sold.last_seen_at)}`}
+            </p>
+            {history.length > 0 && <PriceHistoryChart history={history} />}
+            <a
+              href={sold.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center rounded-xl bg-gl-black px-5 py-2.5 text-sm font-medium text-white"
+            >
+              View on store
+            </a>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (!product) {
+    return null;
   }
 
   const saved = product.old_price - product.current_price;

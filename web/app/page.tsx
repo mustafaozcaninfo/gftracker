@@ -55,7 +55,7 @@ export default async function HomePage() {
       href: "/sold",
       title: "Sold / Gone",
       desc: "Removed from offer recently",
-      count: sold.sold_recent.length,
+      count: sold.sold_recent_48h,
       countLabel: "gone (48h)",
       tone: "border-orange-200/80 bg-orange-50/80",
     },
