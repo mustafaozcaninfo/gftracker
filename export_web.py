@@ -15,18 +15,30 @@ SCRAPE_HISTORY_EXPORT_LIMIT = 48
 SCRAPE_HISTORY_BACKUP_LIMIT = 96
 
 
+def _runs_to_index(runs: list[Any]) -> dict[int, dict[str, Any]]:
+    return {
+        int(run["id"]): run
+        for run in runs
+        if isinstance(run, dict) and run.get("id") is not None
+    }
+
+
 def load_scrape_history_backup(data_dir: Path) -> dict[int, dict[str, Any]]:
     path = data_dir / "scrape_history.json"
-    if not path.exists():
+    if path.exists():
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            return _runs_to_index(payload.get("runs", []))
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
+
+    # Cache miss: seed from last committed/deployed meta so history is not wiped.
+    meta_path = data_dir.parent / "web/public/data/meta.json"
+    if not meta_path.exists():
         return {}
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        runs = payload.get("runs", [])
-        return {
-            int(run["id"]): run
-            for run in runs
-            if isinstance(run, dict) and run.get("id") is not None
-        }
+        payload = json.loads(meta_path.read_text(encoding="utf-8"))
+        return _runs_to_index(payload.get("scrape_history", []))
     except (json.JSONDecodeError, TypeError, ValueError):
         return {}
 
