@@ -74,6 +74,111 @@ export function toggleWatchlistItem(
   ];
 }
 
+export function encodeWatchlistShare(items: WatchlistItem[]): string {
+  const json = JSON.stringify(items);
+  if (typeof btoa === "undefined") return "";
+  return btoa(json).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+export function decodeWatchlistShare(encoded: string): WatchlistItem[] | null {
+  try {
+    const padded = encoded.replace(/-/g, "+").replace(/_/g, "/");
+    const pad = padded.length % 4 === 0 ? "" : "=".repeat(4 - (padded.length % 4));
+    const json = atob(padded + pad);
+    const parsed = JSON.parse(json) as WatchlistItem[];
+    if (!Array.isArray(parsed)) return null;
+    return parsed.filter(
+      (item) =>
+        item &&
+        typeof item.product_id === "string" &&
+        item.snapshot &&
+        typeof item.snapshot.name === "string",
+    );
+  } catch {
+    return null;
+  }
+}
+
+export function mergeWatchlists(
+  existing: WatchlistItem[],
+  incoming: WatchlistItem[],
+): WatchlistItem[] {
+  const seen = new Set(existing.map((item) => item.product_id));
+  const merged = [...existing];
+  for (const item of incoming) {
+    if (!seen.has(item.product_id)) {
+      merged.push(item);
+      seen.add(item.product_id);
+    }
+  }
+  return merged;
+}
+
+export function exportWatchlistCsv(
+  items: WatchlistItem[],
+  currentById: Map<string, Product>,
+): string {
+  const escape = (value: string | number) => {
+    const text = String(value);
+    if (/[",\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
+    return text;
+  };
+
+  const rows = [
+    [
+      "product_id",
+      "name",
+      "brand",
+      "sku",
+      "liked_at",
+      "liked_price",
+      "current_price",
+      "liked_discount",
+      "current_discount",
+      "price_change",
+      "url",
+    ].join(","),
+  ];
+
+  for (const item of items) {
+    const current = currentById.get(item.product_id);
+    const delta = priceDelta(item.snapshot, current);
+    rows.push(
+      [
+        item.product_id,
+        item.snapshot.name,
+        item.snapshot.brand,
+        item.snapshot.sku,
+        item.liked_at,
+        item.snapshot.current_price,
+        current?.current_price ?? "",
+        item.snapshot.discount_percent,
+        current?.discount_percent ?? "",
+        delta.changed ? delta.amount : 0,
+        item.snapshot.url,
+      ]
+        .map(escape)
+        .join(","),
+    );
+  }
+
+  return rows.join("\n");
+}
+
+export function downloadTextFile(
+  filename: string,
+  content: string,
+  mime = "text/plain;charset=utf-8",
+): void {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 export function priceDelta(
   snapshot: WatchlistSnapshot,
   current: Product | undefined,

@@ -10,6 +10,7 @@ import { BrandLink } from "./BrandLink";
 import { GoogleLensButton } from "./GoogleLensButton";
 import { LikeButton } from "./LikeButton";
 import { PriceHistoryChart } from "./PriceHistoryChart";
+import { SimilarProducts } from "./SimilarProducts";
 
 interface ProductDetailProps {
   productId: string;
@@ -170,6 +171,8 @@ export function ProductDetail({ productId }: ProductDetailProps) {
           <PriceHistoryChart points={history} />
         </div>
       </div>
+
+      <SimilarProducts product={product} />
     </section>
   );
 }

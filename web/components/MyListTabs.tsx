@@ -4,8 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { PriceChange, Product } from "@/lib/types";
-import { priceDelta } from "@/lib/watchlist";
+import { decodeWatchlistShare, priceDelta } from "@/lib/watchlist";
 import { useWatchlist } from "./WatchlistProvider";
+import { MyListToolbar } from "./MyListToolbar";
 import { PriceChanges } from "./PriceChanges";
 import { WatchlistItemCard } from "./WatchlistItemCard";
 
@@ -23,9 +24,10 @@ interface MyListTabsProps {
 export function MyListTabs({ changes }: MyListTabsProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { items, remove, ready } = useWatchlist();
+  const { items, remove, ready, importItems } = useWatchlist();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [importNotice, setImportNotice] = useState<string | null>(null);
 
   const tab: TabKey =
     searchParams.get("tab") === "changes" ? "changes" : "liked";
@@ -37,6 +39,20 @@ export function MyListTabs({ changes }: MyListTabsProps) {
     },
     [router],
   );
+
+  useEffect(() => {
+    const encoded = searchParams.get("import");
+    if (!encoded) return;
+    const decoded = decodeWatchlistShare(encoded);
+    if (!decoded?.length) return;
+    const added = importItems(decoded);
+    setImportNotice(
+      added > 0
+        ? `Imported ${added} product${added === 1 ? "" : "s"} from shared list`
+        : "Shared list already imported",
+    );
+    router.replace("/my-list", { scroll: false });
+  }, [searchParams, importItems, router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +97,14 @@ export function MyListTabs({ changes }: MyListTabsProps) {
           Like products to track price moves on this device.
         </p>
       </div>
+
+      {importNotice && (
+        <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950">
+          {importNotice}
+        </div>
+      )}
+
+      <MyListToolbar products={products} />
 
       <div
         className="flex gap-2 overflow-x-auto pb-1 scrollbar-none"

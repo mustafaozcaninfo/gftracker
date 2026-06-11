@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { loadMeta } from "@/lib/data";
+import { loadBiggestDrops, loadMeta } from "@/lib/data";
 import { formatDate } from "@/lib/format";
+import { OverviewExtras } from "@/components/OverviewExtras";
 import { PageShell } from "@/components/PageShell";
 import { StatsCards } from "@/components/StatsCards";
 
 export default async function HomePage() {
-  const meta = await loadMeta();
+  const [meta, drops] = await Promise.all([loadMeta(), loadBiggestDrops()]);
 
   const quickLinks = [
     {
@@ -39,6 +40,12 @@ export default async function HomePage() {
       count: meta.brands.length,
     },
     {
+      href: "/sizes",
+      title: "Sizes",
+      desc: "Filter by clothing & shoe size",
+      count: meta.stats.total_products,
+    },
+    {
       href: "/my-list",
       title: "My List",
       desc: "Liked products & price changes",
@@ -57,7 +64,7 @@ export default async function HomePage() {
         generatedAt={formatDate(meta.generated_at)}
       />
 
-      <section className="grid grid-cols-2 gap-3 sm:gap-4">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {quickLinks.map((link) => (
           <Link
             key={link.href}
@@ -72,6 +79,8 @@ export default async function HomePage() {
           </Link>
         ))}
       </section>
+
+      <OverviewExtras meta={meta} drops={drops} />
     </PageShell>
   );
 }

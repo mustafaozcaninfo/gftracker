@@ -24,6 +24,14 @@ def build_dashboard_payload(
     brands = sorted({p["brand"] for p in products if p.get("brand")})
     discounts = [p["discount_percent"] for p in products if p.get("discount_percent")]
 
+    discount_buckets: dict[str, int] = {}
+    for start in range(0, 70, 10):
+        label = f"{start}-{start + 9}"
+        discount_buckets[label] = sum(
+            1 for d in discounts if start <= d < start + 10
+        )
+    discount_buckets["70+"] = sum(1 for d in discounts if d >= 70)
+
     stats = {
         "total_products": len(products),
         "total_pages": (scrape_meta or {}).get("total_pages", 0),
@@ -34,6 +42,9 @@ def build_dashboard_payload(
         "price_changes_today": len(store.get_today_price_changes()),
         "buy_signals_count": len(buy_signals),
         "days_tracked": max((p.get("days_tracked") or 0 for p in products), default=0),
+        "discount_buckets": discount_buckets,
+        "high_discount_50_plus": sum(1 for d in discounts if d >= 50),
+        "high_discount_60_plus": sum(1 for d in discounts if d >= 60),
     }
 
     return {
@@ -99,12 +110,19 @@ def export_dashboard(
 
     sizes_sorted = sorted(size_labels, key=_size_sort_key)
 
+    size_counts: dict[str, int] = {}
+    for product in payload["products"]:
+        for size in product.get("sizes") or []:
+            if size:
+                size_counts[size] = size_counts.get(size, 0) + 1
+
     (out_dir / "products.json").write_text(
         json.dumps(
             {
                 "products": payload["products"],
                 "brands": payload["brands"],
                 "sizes": sizes_sorted,
+                "size_counts": size_counts,
             },
             ensure_ascii=False,
         ),

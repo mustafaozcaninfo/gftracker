@@ -66,6 +66,9 @@ export interface DashboardStats {
   price_changes_today: number;
   buy_signals_count: number;
   days_tracked: number;
+  discount_buckets?: Record<string, number>;
+  high_discount_50_plus?: number;
+  high_discount_60_plus?: number;
 }
 
 export interface DashboardData {

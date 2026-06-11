@@ -13,6 +13,7 @@ import type { Product } from "@/lib/types";
 import {
   type WatchlistItem,
   isLiked as checkLiked,
+  mergeWatchlists,
   readWatchlist,
   toggleWatchlistItem,
   writeWatchlist,
@@ -24,6 +25,7 @@ interface WatchlistContextValue {
   isLiked: (productId: string) => boolean;
   toggle: (product: Product) => void;
   remove: (productId: string) => void;
+  importItems: (incoming: WatchlistItem[]) => number;
 }
 
 const WatchlistContext = createContext<WatchlistContextValue | null>(null);
@@ -53,6 +55,15 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const importItems = useCallback((incoming: WatchlistItem[]) => {
+    const prev = readWatchlist();
+    const next = mergeWatchlists(prev, incoming);
+    const added = next.length - prev.length;
+    writeWatchlist(next);
+    setItems(next);
+    return added;
+  }, []);
+
   const value = useMemo(
     () => ({
       items,
@@ -60,8 +71,9 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
       isLiked: (productId: string) => checkLiked(productId, items),
       toggle,
       remove,
+      importItems,
     }),
-    [items, ready, toggle, remove],
+    [items, ready, toggle, remove, importItems],
   );
 
   return (
