@@ -11,8 +11,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { Product } from "@/lib/types";
 import {
   deriveFilterFacets,
-  isBrandAvailable,
-  isGenderAvailable,
+  isBrandInCatalog,
+  isGenderInCatalog,
   isSizeAvailable,
   productMatchesFilters,
 } from "@/lib/catalog-filters";
@@ -34,7 +34,7 @@ interface ProductGridProps {
   brands: string[];
 }
 
-export function ProductGrid({ brands: _brands }: ProductGridProps) {
+export function ProductGrid({ brands }: ProductGridProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -114,13 +114,16 @@ export function ProductGrid({ brands: _brands }: ProductGridProps) {
     [products, filters, deferredQuery],
   );
 
+  // Only validate after catalog loads — empty products made deep links reset to /products
   useEffect(() => {
+    if (loading || products.length === 0) return;
+
     const patches: Partial<typeof filters> = {};
-    if (!isBrandAvailable(brand, facets)) patches.brand = "all";
-    if (!isGenderAvailable(gender, facets)) patches.gender = "all";
+    if (!isBrandInCatalog(brand, products)) patches.brand = "all";
+    if (!isGenderInCatalog(gender, products)) patches.gender = "all";
     if (!isSizeAvailable(size, facets)) patches.size = "all";
     if (Object.keys(patches).length > 0) updateFilters(patches);
-  }, [facets, brand, gender, size, updateFilters]);
+  }, [loading, products, facets, brand, gender, size, updateFilters]);
 
   const filtered = useMemo(() => {
     const list = products.filter((p) =>
@@ -211,7 +214,10 @@ export function ProductGrid({ brands: _brands }: ProductGridProps) {
             className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
           >
             <option value="all">All brands</option>
-            {facets.brands.map((b) => (
+            {(brand !== "all" && !facets.brands.includes(brand)
+              ? [brand, ...facets.brands]
+              : facets.brands
+            ).map((b) => (
               <option key={b} value={b}>
                 {b}
               </option>

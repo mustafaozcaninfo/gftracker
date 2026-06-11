@@ -112,6 +112,17 @@ export function isBrandAvailable(brand: string, facets: FilterFacets): boolean {
   return facets.brands.includes(brand);
 }
 
+/** True if brand exists anywhere in the loaded catalog (for URL deep links). */
+export function isBrandInCatalog(brand: string, products: Product[]): boolean {
+  if (brand === "all") return true;
+  return products.some((p) => p.brand === brand);
+}
+
+export function isGenderInCatalog(gender: string, products: Product[]): boolean {
+  if (gender === "all") return true;
+  return products.some((p) => productGender(p) === gender);
+}
+
 export function sizeLabel(size: string): string {
   if (size === SIZE_FILTER_ONE) return "One Size";
   if (size === SIZE_FILTER_MULTI) return "Multiple sizes";
