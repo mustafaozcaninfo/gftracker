@@ -85,9 +85,27 @@ def export_dashboard(
         json.dumps({"buy_signals": payload["buy_signals"]}, ensure_ascii=False),
         encoding="utf-8",
     )
+    size_labels: set[str] = set()
+    for product in payload["products"]:
+        for size in product.get("sizes") or []:
+            if size:
+                size_labels.add(size)
+
+    def _size_sort_key(label: str) -> tuple[int, str]:
+        lower = label.lower()
+        if lower == "one size" or lower.startswith("one size"):
+            return (0, lower)
+        return (1, lower)
+
+    sizes_sorted = sorted(size_labels, key=_size_sort_key)
+
     (out_dir / "products.json").write_text(
         json.dumps(
-            {"products": payload["products"], "brands": payload["brands"]},
+            {
+                "products": payload["products"],
+                "brands": payload["brands"],
+                "sizes": sizes_sorted,
+            },
             ensure_ascii=False,
         ),
         encoding="utf-8",

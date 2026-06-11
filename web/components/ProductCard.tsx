@@ -65,6 +65,16 @@ export function ProductCard({
           {product.name}
         </h3>
 
+        {product.sizes && product.sizes.length > 0 && (
+          <p className="text-[10px] leading-snug text-neutral-500 sm:text-[11px]">
+            {product.is_one_size
+              ? "One Size"
+              : `Sizes: ${product.sizes.slice(0, 8).join(", ")}${
+                  product.sizes.length > 8 ? "…" : ""
+                }`}
+          </p>
+        )}
+
         <div className="mt-auto space-y-0.5 sm:space-y-1">
           <p className="font-display text-xl text-gl-black sm:text-2xl">
             {formatQAR(product.current_price)}

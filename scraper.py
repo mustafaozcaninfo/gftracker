@@ -261,6 +261,29 @@ class OfferScraper:
         return ""
 
     @staticmethod
+    def _extract_sizes(item) -> list[str]:
+        match = JSON_CONFIG_PATTERN.search(str(item))
+        if not match:
+            return []
+
+        try:
+            config = json.loads(match.group(1))
+        except json.JSONDecodeError:
+            return []
+
+        for attr in (config.get("attributes") or {}).values():
+            code = (attr.get("code") or "").strip().lower()
+            label = (attr.get("label") or "").strip().lower()
+            if code == "size" or label == "size":
+                sizes = [
+                    opt.get("label", "").strip()
+                    for opt in attr.get("options") or []
+                    if opt.get("label")
+                ]
+                return sizes
+        return []
+
+    @staticmethod
     def _extract_sku(item, product_id: str) -> str:
         sku_el = item.select_one("[data-product-sku]")
         if sku_el and sku_el.get("data-product-sku"):
@@ -353,6 +376,7 @@ class OfferScraper:
 
             sku = self._extract_sku(item, product_id)
             image_url = self._extract_image_url(item, self.base_url)
+            sizes = self._extract_sizes(item)
 
             products.append(
                 Product(
@@ -367,6 +391,7 @@ class OfferScraper:
                     timestamp=timestamp,
                     page=page,
                     image_url=image_url,
+                    sizes=sizes,
                 )
             )
 

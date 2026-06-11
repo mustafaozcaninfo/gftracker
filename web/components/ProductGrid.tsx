@@ -14,6 +14,12 @@ import {
   buildProductsHref,
   parseProductFilters,
 } from "@/lib/product-filters";
+import {
+  SIZE_FILTER_MULTI,
+  SIZE_FILTER_ONE,
+  productMatchesSize,
+  sortSizeLabels,
+} from "@/lib/sizes";
 import { ProductCard } from "./ProductCard";
 
 const PAGE_SIZE = 24;
@@ -27,6 +33,7 @@ export function ProductGrid({ brands }: ProductGridProps) {
   const searchParams = useSearchParams();
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [sizeOptions, setSizeOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -35,7 +42,7 @@ export function ProductGrid({ brands }: ProductGridProps) {
     () => parseProductFilters(searchParams),
     [searchParams],
   );
-  const { brand, mindisc: minDiscount, sort } = filters;
+  const { brand, size, mindisc: minDiscount, sort } = filters;
 
   const [query, setQuery] = useState(filters.search);
   const deferredQuery = useDeferredValue(query);
@@ -48,12 +55,14 @@ export function ProductGrid({ brands }: ProductGridProps) {
     (patch: Partial<{
       search: string;
       brand: string;
+      size: string;
       mindisc: number;
       sort: SortKey;
     }>) => {
       const next = {
         search: patch.search ?? filters.search,
         brand: patch.brand ?? filters.brand,
+        size: patch.size ?? filters.size,
         mindisc: patch.mindisc ?? filters.mindisc,
         sort: patch.sort ?? filters.sort,
       };
@@ -77,8 +86,18 @@ export function ProductGrid({ brands }: ProductGridProps) {
         if (!res.ok) throw new Error("Failed to load products");
         return res.json();
       })
-      .then((data: { products: Product[] }) => {
-        if (!cancelled) setProducts(data.products);
+      .then((data: { products: Product[]; sizes?: string[] }) => {
+        if (!cancelled) {
+          setProducts(data.products);
+          const fromCatalog = data.sizes?.length
+            ? data.sizes
+            : [
+                ...new Set(
+                  data.products.flatMap((product) => product.sizes ?? []),
+                ),
+              ];
+          setSizeOptions(sortSizeLabels(fromCatalog));
+        }
       })
       .catch((err: Error) => {
         if (!cancelled) setError(err.message);
@@ -96,6 +115,7 @@ export function ProductGrid({ brands }: ProductGridProps) {
 
     const list = products.filter((p) => {
       if (brand !== "all" && p.brand !== brand) return false;
+      if (!productMatchesSize(p, size)) return false;
       if ((p.discount_percent ?? 0) < minDiscount) return false;
       if (!q) return true;
       return (
@@ -120,11 +140,11 @@ export function ProductGrid({ brands }: ProductGridProps) {
           );
       }
     });
-  }, [products, deferredQuery, brand, minDiscount, sort]);
+  }, [products, deferredQuery, brand, size, minDiscount, sort]);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [deferredQuery, brand, minDiscount, sort]);
+  }, [deferredQuery, brand, size, minDiscount, sort]);
 
   const visible = filtered.slice(0, visibleCount);
   const hasMore = visibleCount < filtered.length;
@@ -167,7 +187,7 @@ export function ProductGrid({ brands }: ProductGridProps) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-black/10 bg-white p-3 sm:gap-3 sm:p-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-black/10 bg-white p-3 sm:gap-3 sm:p-4 md:grid-cols-2 xl:grid-cols-3">
         <label className="space-y-1.5 text-sm">
           <span className="text-neutral-500">Search</span>
           <input
@@ -192,6 +212,28 @@ export function ProductGrid({ brands }: ProductGridProps) {
                 {b}
               </option>
             ))}
+          </select>
+        </label>
+
+        <label className="space-y-1.5 text-sm">
+          <span className="text-neutral-500">Size</span>
+          <select
+            value={size}
+            onChange={(e) => updateFilters({ size: e.target.value })}
+            className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
+          >
+            <option value="all">All sizes</option>
+            <option value={SIZE_FILTER_ONE}>One Size</option>
+            <option value={SIZE_FILTER_MULTI}>Multiple sizes</option>
+            {sizeOptions.length > 0 && (
+              <optgroup label="Specific size">
+                {sizeOptions.map((label) => (
+                  <option key={label} value={label}>
+                    {label}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </label>
 

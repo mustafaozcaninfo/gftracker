@@ -10,6 +10,7 @@ export const SORT_KEYS: SortKey[] = [
 export interface ProductFilters {
   search: string;
   brand: string;
+  size: string;
   mindisc: number;
   sort: SortKey;
 }
@@ -33,6 +34,7 @@ export function parseProductFilters(
   return {
     search: params.get("search") ?? "",
     brand: params.get("brand") ?? "all",
+    size: params.get("size") ?? "all",
     mindisc: parseMindisc(params.get("mindisc")),
     sort: parseSort(params.get("sort")),
   };
@@ -48,6 +50,9 @@ export function buildProductsHref(
   }
   if (filters.brand && filters.brand !== "all") {
     params.set("brand", filters.brand);
+  }
+  if (filters.size && filters.size !== "all") {
+    params.set("size", filters.size);
   }
   if (filters.mindisc && filters.mindisc > 0) {
     params.set("mindisc", String(filters.mindisc));

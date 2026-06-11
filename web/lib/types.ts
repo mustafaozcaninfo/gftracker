@@ -8,6 +8,8 @@ export interface Product {
   discount_percent: number;
   url: string;
   image_url?: string;
+  sizes?: string[];
+  is_one_size?: boolean;
   timestamp: string;
   page: number;
   lowest_price?: number;

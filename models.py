@@ -31,6 +31,7 @@ class Product:
     timestamp: str
     page: int
     image_url: str = ""
+    sizes: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -160,6 +161,51 @@ class ProductStore:
         product_cols = {row[1] for row in conn.execute("PRAGMA table_info(products)")}
         if "image_url" not in product_cols:
             conn.execute("ALTER TABLE products ADD COLUMN image_url TEXT NOT NULL DEFAULT ''")
+        if "sizes_json" not in product_cols:
+            conn.execute(
+                "ALTER TABLE products ADD COLUMN sizes_json TEXT NOT NULL DEFAULT '[]'"
+            )
+
+    @staticmethod
+    def _parse_sizes_json(raw: str | None) -> list[str]:
+        if not raw:
+            return []
+        try:
+            parsed = json.loads(raw)
+            return [str(s) for s in parsed if s]
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    @staticmethod
+    def _sizes_payload(sizes: list[str]) -> str:
+        return json.dumps(sizes, ensure_ascii=False)
+
+    @staticmethod
+    def _is_one_size(sizes: list[str]) -> bool:
+        if len(sizes) != 1:
+            return False
+        label = sizes[0].strip().lower()
+        return label in {
+            "one size",
+            "onesize",
+            "os",
+            "tu",
+            "uni",
+            "unique size",
+        } or label.startswith("one size")
+
+    def update_product_sizes(self, size_map: dict[str, list[str]]) -> int:
+        if not size_map:
+            return 0
+        updated = 0
+        with self._connect() as conn:
+            for product_id, sizes in size_map.items():
+                cursor = conn.execute(
+                    "UPDATE products SET sizes_json = ? WHERE product_id = ?",
+                    (self._sizes_payload(sizes), product_id),
+                )
+                updated += cursor.rowcount
+        return updated
 
     def update_product_images(self, image_map: dict[str, str]) -> int:
         if not image_map:
@@ -400,9 +446,9 @@ class ProductStore:
                     conn.execute(
                         """
                         INSERT INTO products (
-                            product_id, sku, name, brand, url, image_url,
+                            product_id, sku, name, brand, url, image_url, sizes_json,
                             first_seen_at, last_seen_at, is_active
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
                         """,
                         (
                             product.product_id,
@@ -411,6 +457,7 @@ class ProductStore:
                             product.brand,
                             product.url,
                             product.image_url,
+                            self._sizes_payload(product.sizes),
                             product.timestamp,
                             product.timestamp,
                         ),
@@ -424,6 +471,7 @@ class ProductStore:
                                 WHEN ? != '' THEN ?
                                 ELSE image_url
                             END,
+                            sizes_json = ?,
                             last_seen_at = ?, is_active = 1
                         WHERE product_id = ?
                         """,
@@ -434,6 +482,7 @@ class ProductStore:
                             product.url,
                             product.image_url,
                             product.image_url,
+                            self._sizes_payload(product.sizes),
                             product.timestamp,
                             product.product_id,
                         ),
@@ -566,6 +615,7 @@ class ProductStore:
                 """
                 SELECT
                     p.product_id, p.sku, p.name, p.brand, p.url, p.image_url,
+                    p.sizes_json,
                     p.first_seen_at, p.last_seen_at, p.is_active,
                     dp.current_price, dp.old_price, dp.discount_percent,
                     dp.page, dp.scraped_at AS timestamp, dp.price_date,
@@ -583,6 +633,9 @@ class ProductStore:
         result: list[dict[str, Any]] = []
         for row in rows:
             item = dict(row)
+            sizes = self._parse_sizes_json(item.pop("sizes_json", "[]"))
+            item["sizes"] = sizes
+            item["is_one_size"] = self._is_one_size(sizes)
             low = lows.get(item["product_id"])
             current = item.get("current_price")
 
