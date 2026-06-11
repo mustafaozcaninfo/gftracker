@@ -19,7 +19,7 @@ def build_dashboard_payload(
     products = store.get_products_with_analytics()
     price_changes = store.get_all_price_changes(limit=200)
     buy_signals = store.get_buy_signals()
-    scrape_history = store.get_scrape_history(limit=14)
+    scrape_history = store.get_scrape_history(limit=24)
 
     brands = sorted({p["brand"] for p in products if p.get("brand")})
     discounts = [p["discount_percent"] for p in products if p.get("discount_percent")]

@@ -1,7 +1,11 @@
 import Link from "next/link";
 import type { MetaData } from "@/lib/data";
 import type { PriceDrop } from "@/lib/types";
-import { formatQAR } from "@/lib/format";
+import {
+  formatQAR,
+  formatScrapeDuration,
+  formatScrapeRunWhen,
+} from "@/lib/format";
 import { buildProductsHref } from "@/lib/product-filters";
 import { DiscountHistogram } from "./DiscountHistogram";
 
@@ -102,22 +106,43 @@ export function OverviewExtras({ meta, drops }: OverviewExtrasProps) {
             <h2 className="font-display text-xl">Recent runs</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[320px] text-left text-sm">
+            <table className="w-full min-w-[360px] text-left text-sm">
               <thead>
                 <tr className="text-xs uppercase text-neutral-500">
-                  <th className="pb-2 pr-4">Date</th>
+                  <th className="pb-2 pr-4">When (Qatar)</th>
                   <th className="pb-2 pr-4">Products</th>
+                  <th className="pb-2 pr-4">Pages</th>
                   <th className="pb-2">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5">
-                {history.slice(0, 5).map((run) => (
-                  <tr key={run.id}>
-                    <td className="py-2 pr-4">{run.run_date}</td>
-                    <td className="py-2 pr-4">{run.products_found.toLocaleString()}</td>
-                    <td className="py-2 capitalize text-neutral-600">{run.status}</td>
-                  </tr>
-                ))}
+                {history.slice(0, 12).map((run) => {
+                  const duration = formatScrapeDuration(
+                    run.started_at,
+                    run.completed_at,
+                  );
+                  return (
+                    <tr key={run.id}>
+                      <td className="py-2 pr-4">
+                        <p className="tabular-nums">
+                          {formatScrapeRunWhen(run.started_at, run.completed_at)}
+                        </p>
+                        {duration && (
+                          <p className="text-[11px] text-neutral-400">{duration}</p>
+                        )}
+                      </td>
+                      <td className="py-2 pr-4 tabular-nums">
+                        {run.products_found.toLocaleString()}
+                      </td>
+                      <td className="py-2 pr-4 tabular-nums text-neutral-600">
+                        {run.pages_scraped}/{run.total_pages || "—"}
+                      </td>
+                      <td className="py-2 capitalize text-neutral-600">
+                        {run.status}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
