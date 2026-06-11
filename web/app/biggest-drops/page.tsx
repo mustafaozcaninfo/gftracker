@@ -10,7 +10,7 @@ export default async function BiggestDropsPage() {
       stats={meta.stats}
       source={meta.source}
       generatedAt={meta.generated_at}
-      counts={{ changes: drops.length }}
+      counts={{ changes: meta.stats.drops_today ?? drops.length }}
     >
       <section className="space-y-4">
         <div>
@@ -19,7 +19,11 @@ export default async function BiggestDropsPage() {
           </p>
           <h2 className="font-display text-xl sm:text-2xl">Biggest Price Drops</h2>
           <p className="mt-1 text-sm text-neutral-600">
-            Largest QAR reductions from recorded price changes.
+            Largest QAR reductions from recorded price changes. Also see{" "}
+            <a href="/price-changes" className="underline hover:text-neutral-900">
+              all changes
+            </a>
+            .
           </p>
         </div>
         <BiggestDropsList drops={drops} />

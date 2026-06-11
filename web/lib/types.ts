@@ -84,6 +84,7 @@ export interface DashboardStats {
   max_discount: number;
   brand_count: number;
   price_changes_today: number;
+  drops_today?: number;
   buy_signals_count: number;
   days_tracked: number;
   discount_buckets?: Record<string, number>;

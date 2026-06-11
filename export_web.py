@@ -93,6 +93,7 @@ def build_dashboard_payload(
         "max_discount": max(discounts) if discounts else 0,
         "brand_count": len(brands),
         "price_changes_today": len(store.get_today_price_changes()),
+        "drops_today": store.count_today_drops(),
         "buy_signals_count": len(buy_signals),
         "days_tracked": max((p.get("days_tracked") or 0 for p in products), default=0),
         "discount_buckets": discount_buckets,

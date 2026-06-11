@@ -39,8 +39,8 @@ export default async function HomePage() {
       href: "/biggest-drops",
       title: "Price Drops",
       desc: "Largest QAR reductions logged",
-      count: drops.length,
-      countLabel: "drops",
+      count: meta.stats.drops_today ?? drops.length,
+      countLabel: "drops today",
       tone: "border-emerald-200/80 bg-emerald-50/80",
     },
     {
@@ -102,7 +102,7 @@ export default async function HomePage() {
       counts={{
         best_deals: bestDeals.length,
         buy_signals: buySignals.length,
-        changes: drops.length,
+        changes: meta.stats.drops_today ?? drops.length,
       }}
     >
       <StatsCards

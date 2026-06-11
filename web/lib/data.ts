@@ -33,6 +33,7 @@ const emptyStats: DashboardStats = {
   max_discount: 0,
   brand_count: 0,
   price_changes_today: 0,
+  drops_today: 0,
   buy_signals_count: 0,
   days_tracked: 0,
   sold_recent_24h: 0,

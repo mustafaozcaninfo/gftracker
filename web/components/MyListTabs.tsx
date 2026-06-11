@@ -86,6 +86,12 @@ export function MyListTabs({ changes }: MyListTabsProps) {
 
   const changedLiked = likedWithDelta.filter(({ delta }) => delta.changed);
 
+  const watchedChanges = useMemo(() => {
+    if (!items.length) return [];
+    const ids = new Set(items.map((item) => item.product_id));
+    return changes.filter((change) => ids.has(change.product_id));
+  }, [changes, items]);
+
   return (
     <section className="space-y-4">
       <div>
@@ -128,8 +134,8 @@ export function MyListTabs({ changes }: MyListTabsProps) {
             {key === "liked" && items.length > 0 && (
               <span className="ml-1.5 opacity-70">({items.length})</span>
             )}
-            {key === "changes" && changes.length > 0 && (
-              <span className="ml-1.5 opacity-70">({changes.length})</span>
+            {key === "changes" && watchedChanges.length > 0 && (
+              <span className="ml-1.5 opacity-70">({watchedChanges.length})</span>
             )}
           </button>
         ))}
@@ -182,8 +188,22 @@ export function MyListTabs({ changes }: MyListTabsProps) {
       )}
 
       {tab === "changes" && (
-        <div role="tabpanel">
-          <PriceChanges changes={changes} />
+        <div role="tabpanel" className="space-y-4">
+          {items.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center">
+              <p className="text-neutral-600">
+                Like products first to see their price changes here.
+              </p>
+              <Link
+                href="/price-changes"
+                className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-gl-black px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-800"
+              >
+                View all price changes
+              </Link>
+            </div>
+          ) : (
+            <PriceChanges changes={watchedChanges} />
+          )}
         </div>
       )}
     </section>

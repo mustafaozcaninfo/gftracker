@@ -10,7 +10,7 @@ export function BiggestDropsList({ drops }: BiggestDropsListProps) {
   if (!drops.length) {
     return (
       <p className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center text-neutral-500">
-        No price drops recorded yet. Check back after the next daily scrape.
+        No price drops recorded yet. Drops appear when hourly scrapes detect a lower price.
       </p>
     );
   }

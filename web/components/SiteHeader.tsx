@@ -107,7 +107,7 @@ export function SiteHeader({ stats, counts = {} }: SiteHeaderProps) {
     if (key === "best_deals") return counts.best_deals ?? 20;
     if (key === "buy_signals") return counts.buy_signals ?? stats.buy_signals_count;
     if (key === "products") return counts.products ?? stats.total_products;
-    if (key === "changes") return counts.changes ?? stats.price_changes_today;
+    if (key === "changes") return counts.changes ?? stats.drops_today ?? stats.price_changes_today ?? 0;
     if (key === "sold") return stats.sold_recent_48h ?? 0;
     return undefined;
   };

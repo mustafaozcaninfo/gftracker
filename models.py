@@ -16,8 +16,11 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from gender import infer_gender
+
+QATAR_TZ = ZoneInfo("Asia/Qatar")
 
 
 @dataclass
@@ -343,11 +346,11 @@ class ProductStore:
 
     @staticmethod
     def _today() -> str:
-        return datetime.now().strftime("%Y-%m-%d")
+        return datetime.now(QATAR_TZ).strftime("%Y-%m-%d")
 
     @staticmethod
     def _yesterday() -> str:
-        return (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        return (datetime.now(QATAR_TZ) - timedelta(days=1)).strftime("%Y-%m-%d")
 
     def checkpoint_wal(self) -> None:
         """Flush WAL into the main DB file before CI cache upload."""
@@ -747,6 +750,36 @@ class ProductStore:
                 (today,),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def get_today_drops(self) -> list[dict[str, Any]]:
+        today = self._today()
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT product_id, sku, name, old_current_price, new_current_price,
+                       old_discount_percent, new_discount_percent, price_date, timestamp
+                FROM price_changes
+                WHERE price_date = ?
+                  AND new_current_price < old_current_price
+                ORDER BY (old_current_price - new_current_price) DESC, timestamp DESC
+                """,
+                (today,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def count_today_drops(self) -> int:
+        today = self._today()
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) AS c
+                FROM price_changes
+                WHERE price_date = ?
+                  AND new_current_price < old_current_price
+                """,
+                (today,),
+            ).fetchone()
+        return int(row["c"]) if row else 0
 
     def get_latest_products(self) -> list[dict[str, Any]]:
         return self.get_products_with_analytics()
