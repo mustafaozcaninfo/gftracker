@@ -119,7 +119,7 @@ export function ProductDetail({ productId }: ProductDetailProps) {
                 ? `Removed ${formatDate(sold.removed_at)}`
                 : `Last seen ${formatDate(sold.last_seen_at)}`}
             </p>
-            {history.length > 0 && <PriceHistoryChart history={history} />}
+            {history.length > 0 && <PriceHistoryChart points={history} />}
             <a
               href={sold.url}
               target="_blank"
