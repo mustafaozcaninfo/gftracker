@@ -4,23 +4,23 @@ interface Env {
 }
 
 const REPO = "mustafaozcaninfo/gftracker";
-const EVENT_TYPE = "hourly-scrape";
+const WORKFLOW_FILE = "daily-tracker.yml";
 
 async function triggerScrape(env: Env): Promise<Response> {
-  const response = await fetch(`https://api.github.com/repos/${REPO}/dispatches`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.GITHUB_PAT}`,
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-      "Content-Type": "application/json",
-      "User-Agent": "gftracker-cloudflare-cron",
+  const response = await fetch(
+    `https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW_FILE}/dispatches`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.GITHUB_PAT}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Content-Type": "application/json",
+        "User-Agent": "gftracker-cloudflare-cron",
+      },
+      body: JSON.stringify({ ref: "main" }),
     },
-    body: JSON.stringify({
-      event_type: EVENT_TYPE,
-      client_payload: { source: "cloudflare-cron", at: new Date().toISOString() },
-    }),
-  });
+  );
 
   const body = await response.text();
   if (!response.ok) {
@@ -28,7 +28,12 @@ async function triggerScrape(env: Env): Promise<Response> {
   }
 
   return new Response(
-    JSON.stringify({ ok: true, repo: REPO, event: EVENT_TYPE, at: new Date().toISOString() }),
+    JSON.stringify({
+      ok: true,
+      repo: REPO,
+      workflow: WORKFLOW_FILE,
+      at: new Date().toISOString(),
+    }),
     { headers: { "content-type": "application/json" } },
   );
 }
