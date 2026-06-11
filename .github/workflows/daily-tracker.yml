@@ -32,7 +32,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: data/
-          key: gftracker-data-v2-${{ github.ref_name }}
+          key: gftracker-data-v2-${{ github.ref_name }}-${{ github.run_id }}
           restore-keys: |
             gftracker-data-v2-${{ github.ref_name }}-
             gftracker-data-v2-
@@ -49,7 +49,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: data/
-          key: gftracker-data-v2-${{ github.ref_name }}
+          key: gftracker-data-v2-${{ github.ref_name }}-${{ github.run_id }}
 
       - uses: actions/setup-node@v4
         with:
