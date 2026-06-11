@@ -4,10 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { PriceChange, Product } from "@/lib/types";
-import { formatDate, formatQAR } from "@/lib/format";
 import { priceDelta } from "@/lib/watchlist";
 import { useWatchlist } from "./WatchlistProvider";
 import { PriceChanges } from "./PriceChanges";
+import { WatchlistItemCard } from "./WatchlistItemCard";
 
 type TabKey = "liked" | "changes";
 
@@ -142,81 +142,14 @@ export function MyListTabs({ changes }: MyListTabsProps) {
                 </div>
               )}
 
-              <div className="grid gap-3">
-                {likedWithDelta.map(({ item, current, delta }) => (
-                  <article
+              <div className="grid gap-4">
+                {likedWithDelta.map(({ item, current }) => (
+                  <WatchlistItemCard
                     key={item.product_id}
-                    className="rounded-2xl border border-black/10 bg-white p-4"
-                  >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0 space-y-1">
-                        <p className="text-[10px] uppercase tracking-wide text-gl-gold sm:text-xs">
-                          {item.snapshot.brand}
-                        </p>
-                        <h3 className="font-medium text-neutral-900">
-                          {item.snapshot.name}
-                        </h3>
-                        <p className="text-xs text-neutral-500">
-                          Liked {formatDate(item.liked_at)} · SKU {item.snapshot.sku}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => remove(item.product_id)}
-                        className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl border border-black/10 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-50"
-                      >
-                        Remove
-                      </button>
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
-                      <span className="text-neutral-500 line-through">
-                        {formatQAR(item.snapshot.current_price)} when liked
-                      </span>
-                      {current ? (
-                        <>
-                          <span className="text-neutral-400">→</span>
-                          <span className="font-display text-lg text-gl-black">
-                            {formatQAR(current.current_price)}
-                          </span>
-                          {delta.changed && (
-                            <span
-                              className={
-                                delta.dropped
-                                  ? "rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
-                                  : "rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800"
-                              }
-                            >
-                              {delta.dropped ? "↓" : "↑"}{" "}
-                              {formatQAR(Math.abs(delta.amount))}
-                              {delta.discountChanged &&
-                                ` · ${item.snapshot.discount_percent}% → ${current.discount_percent}%`}
-                            </span>
-                          )}
-                          {!delta.changed && (
-                            <span className="text-xs text-neutral-500">
-                              No change since liked
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        <span className="text-xs text-neutral-500">
-                          Product no longer in catalog
-                        </span>
-                      )}
-                    </div>
-
-                    {current && (
-                      <a
-                        href={current.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-gl-black px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800"
-                      >
-                        View on store
-                      </a>
-                    )}
-                  </article>
+                    item={item}
+                    current={current}
+                    onRemove={remove}
+                  />
                 ))}
               </div>
             </>

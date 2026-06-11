@@ -11,6 +11,8 @@ export interface WatchlistSnapshot {
   sku: string;
   url: string;
   image_url?: string;
+  sizes?: string[];
+  is_one_size?: boolean;
 }
 
 export interface WatchlistItem {
@@ -29,6 +31,8 @@ export function snapshotFromProduct(product: Product): WatchlistSnapshot {
     sku: product.sku,
     url: product.url,
     image_url: product.image_url,
+    sizes: product.sizes,
+    is_one_size: product.is_one_size,
   };
 }
 
