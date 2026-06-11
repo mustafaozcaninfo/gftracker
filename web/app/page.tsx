@@ -27,9 +27,15 @@ export default async function HomePage() {
       count: meta.stats.total_products,
     },
     {
-      href: "/price-changes",
-      title: "Price Changes",
-      desc: "Recent price movements",
+      href: "/brands",
+      title: "Brands",
+      desc: "Browse by brand",
+      count: meta.brands.length,
+    },
+    {
+      href: "/my-list",
+      title: "My List",
+      desc: "Liked products & price changes",
       count: meta.stats.price_changes_today,
     },
   ];

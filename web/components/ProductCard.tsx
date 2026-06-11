@@ -1,15 +1,22 @@
-import Image from "next/image";
 import type { Product } from "@/lib/types";
 import { formatQAR } from "@/lib/format";
-import { LazyProductImage } from "./LazyProductImage";
+import { BrandLink } from "./BrandLink";
+import { LikeButton } from "./LikeButton";
+import { ProductImageSection } from "./ProductImageSection";
 
 interface ProductCardProps {
   product: Product;
   rank?: number;
   lazyImage?: boolean;
+  showLike?: boolean;
 }
 
-export function ProductCard({ product, rank, lazyImage = false }: ProductCardProps) {
+export function ProductCard({
+  product,
+  rank,
+  lazyImage = false,
+  showLike = true,
+}: ProductCardProps) {
   const saved = product.old_price - product.current_price;
   const atLowest = product.is_at_lowest;
   const nearLow =
@@ -24,11 +31,14 @@ export function ProductCard({ product, rank, lazyImage = false }: ProductCardPro
           {rank !== undefined && (
             <span className="text-xs font-medium text-neutral-400">#{rank}</span>
           )}
-          <p className="truncate text-[10px] uppercase tracking-wide text-gl-gold sm:text-xs">
-            {product.brand}
-          </p>
+          <BrandLink
+            brand={product.brand}
+            className="block text-[10px] sm:text-xs"
+          />
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
+        <div className="flex shrink-0 items-start gap-2">
+          {showLike && <LikeButton product={product} />}
+          <div className="flex flex-col items-end gap-1">
           {atLowest && (
             <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
               Buy now
@@ -44,29 +54,11 @@ export function ProductCard({ product, rank, lazyImage = false }: ProductCardPro
               {product.discount_percent}% OFF
             </span>
           )}
+          </div>
         </div>
       </div>
 
-      {product.image_url ? (
-        lazyImage ? (
-          <LazyProductImage src={product.image_url} alt={product.name} />
-        ) : (
-          <div className="relative aspect-[340/450] w-full bg-neutral-100">
-            <Image
-              src={product.image_url}
-              alt={product.name}
-              fill
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-              className="object-cover object-top"
-              unoptimized
-            />
-          </div>
-        )
-      ) : (
-        <div className="flex aspect-[340/450] items-center justify-center bg-neutral-100 text-xs text-neutral-400">
-          No image
-        </div>
-      )}
+      <ProductImageSection product={product} lazy={lazyImage} />
 
       <div className="flex flex-1 flex-col gap-2.5 p-3 sm:gap-3 sm:p-4">
         <h3 className="line-clamp-3 text-sm font-medium leading-snug text-neutral-900 sm:text-[15px]">

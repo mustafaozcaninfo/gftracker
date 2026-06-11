@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { DashboardStats } from "@/lib/types";
+import { useWatchlist } from "./WatchlistProvider";
 
 const NAV = [
   { href: "/", label: "Overview" },
   { href: "/best-deals", label: "Best Deals", countKey: "best_deals" as const },
   { href: "/buy-signals", label: "Buy Signals", countKey: "buy_signals" as const },
   { href: "/products", label: "All Products", countKey: "products" as const },
-  { href: "/brands", label: "Markalar" },
-  { href: "/price-changes", label: "Price Changes", countKey: "changes" as const },
+  { href: "/brands", label: "Brands" },
+  { href: "/my-list", label: "My List", watchlist: true },
 ];
 
 interface SiteHeaderProps {
@@ -20,6 +21,7 @@ interface SiteHeaderProps {
 
 export function SiteHeader({ stats, counts = {} }: SiteHeaderProps) {
   const pathname = usePathname();
+  const { items, ready } = useWatchlist();
 
   const countFor = (key?: (typeof NAV)[number]["countKey"]) => {
     if (!key) return undefined;
@@ -62,9 +64,15 @@ export function SiteHeader({ stats, counts = {} }: SiteHeaderProps) {
         className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 scrollbar-none sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
         aria-label="Main navigation"
       >
-        {NAV.map(({ href, label, countKey }) => {
-          const active = pathname === href;
-          const count = countKey ? countFor(countKey) : undefined;
+        {NAV.map(({ href, label, countKey, watchlist }) => {
+          const active =
+            pathname === href ||
+            (href === "/my-list" && pathname.startsWith("/my-list"));
+          const count = countKey
+            ? countFor(countKey)
+            : watchlist && ready && items.length > 0
+              ? items.length
+              : undefined;
           return (
             <Link
               key={href}
