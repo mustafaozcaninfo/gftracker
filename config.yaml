@@ -14,15 +14,15 @@ output:
   snapshot_dir: "data"
 
 scraper:
-  # stealth | normal | turbo  (turbo ≈ 3-5 min for 152 pages)
+  # stealth | normal | turbo  (turbo ≈ 2-4 min for 152 pages)
   speed: turbo
-  min_delay: 0.2
-  max_delay: 0.6
-  min_rate_limit: 0.3
-  max_rate_limit: 0.8
-  max_retries: 3
-  retry_backoff: 1.0
-  timeout: 30
+  min_delay: 0.1
+  max_delay: 0.35
+  min_rate_limit: 0.15
+  max_rate_limit: 0.45
+  max_retries: 2
+  retry_backoff: 0.8
+  timeout: 20
   use_playwright: false
 
 proxies: []

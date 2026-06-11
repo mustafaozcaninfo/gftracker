@@ -26,7 +26,7 @@ JSON_CONFIG_PATTERN = re.compile(r'"jsonConfig"\s*:\s*(\{.*?\})\s*,\s*"jsonSwatc
 SPEED_PRESETS: dict[str, dict[str, float]] = {
     "stealth": {"min_delay": 3.0, "max_delay": 8.0, "min_rate_limit": 4.0, "max_rate_limit": 6.0},
     "normal": {"min_delay": 1.5, "max_delay": 3.0, "min_rate_limit": 2.0, "max_rate_limit": 3.5},
-    "turbo": {"min_delay": 0.2, "max_delay": 0.6, "min_rate_limit": 0.3, "max_rate_limit": 0.8},
+    "turbo": {"min_delay": 0.1, "max_delay": 0.35, "min_rate_limit": 0.15, "max_rate_limit": 0.45},
 }
 
 
