@@ -1,153 +1,79 @@
 import Link from "next/link";
 import type { MetaData } from "@/lib/data";
 import type { PriceDrop } from "@/lib/types";
-import {
-  formatQAR,
-  formatScrapeDuration,
-  formatScrapeRunWhen,
-} from "@/lib/format";
-import { buildProductsHref, productDetailHref } from "@/lib/product-filters";
+import { formatQAR } from "@/lib/format";
+import { productDetailHref } from "@/lib/product-filters";
 import { DiscountHistogram } from "./DiscountHistogram";
+import { OverviewQuickFilters } from "./OverviewQuickFilters";
+import { RecentRunsList } from "./RecentRunsList";
 
 interface OverviewExtrasProps {
   meta: MetaData;
   drops: PriceDrop[];
 }
 
-const BUDGET_LINKS = [
-  { label: "Under 200 QAR", maxprice: 200 },
-  { label: "Under 500 QAR", maxprice: 500 },
-  { label: "Under 1,000 QAR", maxprice: 1000 },
-  { label: "50%+ off", mindisc: 50 },
-  { label: "Women", gender: "women" as const },
-  { label: "Men", gender: "men" as const },
-  { label: "Kids", gender: "kids" as const },
-];
-
 export function OverviewExtras({ meta, drops }: OverviewExtrasProps) {
-  const history = meta.scrape_history ?? [];
   const topDrops = drops.slice(0, 5);
+  const history = meta.scrape_history ?? [];
 
   return (
-    <div className="space-y-6">
-      <DiscountHistogram stats={meta.stats} />
+    <div className="space-y-6 lg:space-y-8">
+      <OverviewQuickFilters />
 
-      <section className="space-y-3 rounded-2xl border border-black/10 bg-white p-4 sm:p-6">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
-            Shop by budget
-          </p>
-          <h2 className="font-display text-xl">Quick filters</h2>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {BUDGET_LINKS.map(({ label, maxprice, mindisc, gender }) => (
-            <Link
-              key={label}
-              href={buildProductsHref({ maxprice, mindisc, gender })}
-              className="rounded-full bg-neutral-100 px-4 py-2 text-sm font-medium hover:bg-neutral-200"
-            >
-              {label}
-            </Link>
-          ))}
-          <Link
-            href="/sizes"
-            className="rounded-full bg-neutral-100 px-4 py-2 text-sm font-medium hover:bg-neutral-200"
-          >
-            Browse sizes
-          </Link>
-        </div>
-      </section>
-
-      {topDrops.length > 0 && (
-        <section className="space-y-3 rounded-2xl border border-black/10 bg-white p-4 sm:p-6">
-          <div className="flex items-end justify-between gap-2">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
-                Latest
-              </p>
-              <h2 className="font-display text-xl">Biggest drops</h2>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {topDrops.length > 0 ? (
+          <section className="rounded-2xl border border-black/8 bg-white p-4 shadow-sm sm:p-6">
+            <div className="mb-4 flex items-end justify-between gap-2">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.2em] text-neutral-500">
+                  Latest
+                </p>
+                <h2 className="font-display text-xl sm:text-2xl">Biggest drops</h2>
+              </div>
+              <Link
+                href="/biggest-drops"
+                className="text-sm font-medium text-neutral-600 hover:text-gl-black"
+              >
+                View all →
+              </Link>
             </div>
-            <Link href="/biggest-drops" className="text-sm text-neutral-500 hover:text-neutral-800">
-              View all →
-            </Link>
-          </div>
-          <ul className="divide-y divide-black/5">
-            {topDrops.map((drop) => (
-              <li key={`${drop.product_id}-${drop.timestamp}`} className="flex gap-3 py-3">
-                <div className="min-w-0 flex-1">
-                  <Link
-                    href={productDetailHref(drop.product_id)}
-                    className="font-medium hover:underline"
-                  >
-                    {drop.name}
-                  </Link>
-                  <p className="text-xs text-neutral-500">{drop.sku}</p>
-                </div>
-                <div className="shrink-0 text-right text-sm">
-                  <p className="font-medium text-emerald-700">
-                    −{formatQAR(drop.drop_amount)}
-                  </p>
-                  <p className="text-neutral-500">
-                    {formatQAR(drop.old_current_price)} → {formatQAR(drop.new_current_price)}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+            <ul className="divide-y divide-black/6">
+              {topDrops.map((drop) => (
+                <li
+                  key={`${drop.product_id}-${drop.timestamp}`}
+                  className="flex items-start justify-between gap-3 py-3 first:pt-0"
+                >
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={productDetailHref(drop.product_id)}
+                      className="line-clamp-2 text-sm font-medium leading-snug hover:underline"
+                    >
+                      {drop.name}
+                    </Link>
+                    <p className="mt-0.5 text-[11px] text-neutral-500">{drop.sku}</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-semibold text-emerald-700">
+                      −{formatQAR(drop.drop_amount)}
+                    </p>
+                    <p className="text-[11px] tabular-nums text-neutral-500">
+                      {formatQAR(drop.old_current_price)} → {formatQAR(drop.new_current_price)}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : (
+          <section className="flex items-center justify-center rounded-2xl border border-dashed border-black/15 bg-white/60 p-8 text-center text-sm text-neutral-500">
+            No price drops recorded yet.
+          </section>
+        )}
 
-      {history.length > 0 && (
-        <section className="space-y-3 rounded-2xl border border-black/10 bg-white p-4 sm:p-6">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
-              Scraper
-            </p>
-            <h2 className="font-display text-xl">Recent runs</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[360px] text-left text-sm">
-              <thead>
-                <tr className="text-xs uppercase text-neutral-500">
-                  <th className="pb-2 pr-4">When (Qatar)</th>
-                  <th className="pb-2 pr-4">Products</th>
-                  <th className="pb-2 pr-4">Pages</th>
-                  <th className="pb-2">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-black/5">
-                {history.slice(0, 24).map((run) => {
-                  const duration = formatScrapeDuration(
-                    run.started_at,
-                    run.completed_at,
-                  );
-                  return (
-                    <tr key={run.id}>
-                      <td className="py-2 pr-4">
-                        <p className="tabular-nums">
-                          {formatScrapeRunWhen(run.started_at, run.completed_at)}
-                        </p>
-                        {duration && (
-                          <p className="text-[11px] text-neutral-400">{duration}</p>
-                        )}
-                      </td>
-                      <td className="py-2 pr-4 tabular-nums">
-                        {run.products_found.toLocaleString()}
-                      </td>
-                      <td className="py-2 pr-4 tabular-nums text-neutral-600">
-                        {run.pages_scraped}/{run.total_pages || "—"}
-                      </td>
-                      <td className="py-2 capitalize text-neutral-600">
-                        {run.status}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
+        <RecentRunsList runs={history} />
+      </div>
+
+      <DiscountHistogram stats={meta.stats} />
     </div>
   );
 }

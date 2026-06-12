@@ -22,7 +22,7 @@ export function DiscountHistogram({ stats }: DiscountHistogramProps) {
   const max = Math.max(...Object.values(buckets), 1);
 
   return (
-    <section className="space-y-3 rounded-2xl border border-black/10 bg-white p-4 sm:p-6">
+    <section className="space-y-3 rounded-2xl border border-black/8 bg-white p-4 shadow-sm sm:p-6">
       <div>
         <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
           Distribution

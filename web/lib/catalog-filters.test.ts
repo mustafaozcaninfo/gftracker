@@ -46,6 +46,21 @@ describe("productMatchesFilters", () => {
     ).toBe(false);
   });
 
+  it("excludes women products from men filter when stored gender is wrong", () => {
+    const womenProduct: Product = {
+      ...baseProduct,
+      product_id: "2",
+      name: "Brand Women Floral Dress",
+      gender: "men",
+    };
+    expect(
+      productMatchesFilters(womenProduct, { ...defaultFilters, gender: "men" }, ""),
+    ).toBe(false);
+    expect(
+      productMatchesFilters(womenProduct, { ...defaultFilters, gender: "women" }, ""),
+    ).toBe(true);
+  });
+
   it("matches max price and min discount", () => {
     expect(
       productMatchesFilters(baseProduct, { ...defaultFilters, maxprice: 250 }, ""),

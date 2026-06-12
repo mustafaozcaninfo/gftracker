@@ -16,12 +16,12 @@ import { StatsCards } from "@/components/StatsCards";
 
 export default async function HomePage() {
   const [meta, drops, bestDeals, sold, catalog] = await Promise.all([
-      loadMeta(),
-      loadBiggestDrops(),
-      loadBestDeals(),
-      loadSoldProducts(),
-      loadCatalogCounts(),
-    ]);
+    loadMeta(),
+    loadBiggestDrops(),
+    loadBestDeals(),
+    loadSoldProducts(),
+    loadCatalogCounts(),
+  ]);
 
   const stats = meta.stats;
 
@@ -29,67 +29,78 @@ export default async function HomePage() {
     {
       href: "/best-deals",
       title: "Best Deals",
-      desc: "Highest discounts right now",
+      desc: "Highest discounts on the offer page right now",
       count: bestDeals.length,
-      countLabel: "deals",
-      tone: "border-amber-200/80 bg-amber-50/80",
+      countLabel: "top deals",
+      tone: "deal",
+      featured: true,
     },
     {
       href: "/biggest-drops",
       title: "Price Drops",
-      desc: "Largest QAR reductions logged",
+      desc: "Largest QAR reductions from logged changes",
       count: stats.drops_today ?? 0,
-      countLabel: "drops today",
-      tone: "border-emerald-200/80 bg-emerald-50/80",
+      countLabel: "today",
+      tone: "drop",
+      featured: true,
     },
     {
       href: "/buy-signals",
       title: "Buy Signals",
-      desc: "Near all-time low after a real price move",
+      desc: "Within 2% of tracked lowest price",
       count: stats.buy_signals_count ?? 0,
       countLabel: "signals",
-      tone: "border-teal-200/80 bg-teal-50/80",
+      tone: "signal",
+      featured: true,
     },
     {
       href: "/sold",
       title: "Sold / Gone",
-      desc: "Removed from offer recently",
+      desc: "Removed from the offer recently",
       count: sold.sold_recent_48h,
-      countLabel: "gone (48h)",
-      tone: "border-orange-200/80 bg-orange-50/80",
+      countLabel: "48h",
+      tone: "gone",
     },
     {
       href: "/products",
       title: "All Products",
-      desc: "Full catalog with filters",
+      desc: "Search, filter by brand, size, price",
       count: stats.total_products,
-      countLabel: "products",
-      tone: "border-slate-200/80 bg-slate-50/80",
+      countLabel: "items",
+      tone: "browse",
     },
     {
       href: "/brands",
       title: "Brands",
-      desc: "Browse by brand",
+      desc: "Counts and discount stats per brand",
       count: stats.brand_count || meta.brands.length,
       countLabel: "brands",
-      tone: "border-slate-200/80 bg-slate-50/50",
+      tone: "browse",
     },
     {
       href: "/sizes",
       title: "Sizes",
-      desc: "Filter by clothing & shoe size",
+      desc: "Clothing and shoe size index",
       count: catalog.sizeCount,
       countLabel: "sizes",
-      tone: "border-slate-200/80 bg-slate-50/50",
+      tone: "browse",
     },
     {
       href: "/my-list",
       title: "My List",
-      desc: "Your liked products & alerts",
+      desc: "Liked products and price alerts",
       count: 0,
       countLabel: "saved",
-      tone: "border-violet-200/80 bg-violet-50/80",
+      tone: "personal",
       watchlist: true,
+    },
+    {
+      href: "/compare",
+      title: "Compare",
+      desc: "Side-by-side up to four items",
+      count: 0,
+      countLabel: "",
+      tone: "personal",
     },
   ];
 
@@ -104,11 +115,11 @@ export default async function HomePage() {
         changes: stats.drops_today ?? 0,
       }}
     >
-      <StatsCards stats={stats} generatedAt={formatDate(meta.generated_at)} />
-
-      <OverviewQuickLinks links={quickLinks} />
-
-      <OverviewExtras meta={meta} drops={drops} />
+      <div className="space-y-8 lg:space-y-10">
+        <StatsCards stats={stats} generatedAt={formatDate(meta.generated_at)} />
+        <OverviewQuickLinks links={quickLinks} />
+        <OverviewExtras meta={meta} drops={drops} />
+      </div>
     </PageShell>
   );
 }

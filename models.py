@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from gender import infer_gender
+from gender import infer_gender, resolve_product_gender
 
 QATAR_TZ = ZoneInfo("Asia/Qatar")
 
@@ -813,10 +813,11 @@ class ProductStore:
             sizes = self._parse_sizes_json(item.pop("sizes_json", "[]"))
             item["sizes"] = sizes
             item["is_one_size"] = self._is_one_size(sizes)
-            gender = (item.get("gender") or "").strip()
-            if not gender:
-                gender = infer_gender(item.get("name", ""), item.get("brand", ""))
-            item["gender"] = gender
+            item["gender"] = resolve_product_gender(
+                name=item.get("name", ""),
+                brand=item.get("brand", ""),
+                stored_gender=item.get("gender"),
+            )
             low = lows.get(item["product_id"])
             current = item.get("current_price")
 
@@ -1034,10 +1035,11 @@ class ProductStore:
             sizes = self._parse_sizes_json(item.pop("sizes_json", "[]"))
             item["sizes"] = sizes
             item["is_one_size"] = self._is_one_size(sizes)
-            gender = (item.get("gender") or "").strip()
-            if not gender:
-                gender = infer_gender(item.get("name", ""), item.get("brand", ""))
-            item["gender"] = gender
+            item["gender"] = resolve_product_gender(
+                name=item.get("name", ""),
+                brand=item.get("brand", ""),
+                stored_gender=item.get("gender"),
+            )
             result.append(item)
         return result
 

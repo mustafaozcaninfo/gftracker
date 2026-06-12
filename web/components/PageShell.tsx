@@ -20,10 +20,12 @@ export function PageShell({
   children,
 }: PageShellProps) {
   return (
-    <div className="mx-auto max-w-7xl space-y-6 overflow-x-hidden px-3 py-6 sm:space-y-8 sm:px-6 sm:py-8 lg:px-8">
+    <div className="mx-auto max-w-7xl overflow-x-hidden px-3 pb-6 sm:px-6 sm:pb-8 lg:px-8">
       <SiteHeader stats={stats} counts={counts} />
-      <WatchlistDropBanner />
-      <main id="main-content">{children}</main>
+      <div className="space-y-6 pt-5 sm:space-y-8 sm:pt-6">
+        <WatchlistDropBanner />
+        <main id="main-content">{children}</main>
+      </div>
       <SiteFooter source={source} generatedAt={generatedAt} />
     </div>
   );

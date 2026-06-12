@@ -5,105 +5,33 @@ import { usePathname } from "next/navigation";
 import type { DashboardStats } from "@/lib/types";
 import { useWatchlist } from "./WatchlistProvider";
 
-type NavTone = "home" | "deal" | "drop" | "signal" | "browse" | "gone" | "personal";
-
 type CountKey = "best_deals" | "buy_signals" | "products" | "changes" | "sold";
 
 interface NavItem {
   href: string;
   label: string;
-  tone: NavTone;
+  short?: string;
   countKey?: CountKey;
   watchlist?: boolean;
 }
 
-interface NavGroup {
-  id: string;
-  label: string;
-  items: NavItem[];
-}
-
-const NAV_GROUPS: NavGroup[] = [
-  {
-    id: "home",
-    label: "",
-    items: [{ href: "/", label: "Overview", tone: "home" }],
-  },
-  {
-    id: "deals",
-    label: "Deals",
-    items: [
-      { href: "/best-deals", label: "Best Deals", countKey: "best_deals", tone: "deal" },
-      { href: "/biggest-drops", label: "Price Drops", countKey: "changes", tone: "drop" },
-      { href: "/buy-signals", label: "Buy Signals", countKey: "buy_signals", tone: "signal" },
-    ],
-  },
-  {
-    id: "catalog",
-    label: "Catalog",
-    items: [
-      { href: "/products", label: "All Products", countKey: "products", tone: "browse" },
-      { href: "/brands", label: "Brands", tone: "browse" },
-      { href: "/sizes", label: "Sizes", tone: "browse" },
-    ],
-  },
-  {
-    id: "activity",
-    label: "Activity",
-    items: [
-      {
-        href: "/price-changes",
-        label: "Price Changes",
-        countKey: "changes",
-        tone: "drop",
-      },
-      { href: "/sold", label: "Sold", countKey: "sold", tone: "gone" },
-    ],
-  },
-  {
-    id: "yours",
-    label: "Yours",
-    items: [
-      { href: "/compare", label: "Compare", tone: "personal" },
-      { href: "/my-list", label: "My List", watchlist: true, tone: "personal" },
-    ],
-  },
+const NAV_ITEMS: NavItem[] = [
+  { href: "/", label: "Overview", short: "Home" },
+  { href: "/best-deals", label: "Best Deals", countKey: "best_deals" },
+  { href: "/biggest-drops", label: "Price Drops", short: "Drops", countKey: "changes" },
+  { href: "/buy-signals", label: "Buy Signals", short: "Signals", countKey: "buy_signals" },
+  { href: "/products", label: "Products", countKey: "products" },
+  { href: "/brands", label: "Brands" },
+  { href: "/sizes", label: "Sizes" },
+  { href: "/sold", label: "Sold", countKey: "sold" },
+  { href: "/price-changes", label: "All Changes", short: "Changes" },
+  { href: "/my-list", label: "My List", watchlist: true },
+  { href: "/compare", label: "Compare" },
 ];
-
-const TONE: Record<NavTone, { idle: string; active: string }> = {
-  home: {
-    idle: "bg-neutral-100 text-neutral-800 ring-neutral-200",
-    active: "bg-neutral-900 text-white ring-neutral-900",
-  },
-  deal: {
-    idle: "bg-amber-50 text-amber-950 ring-amber-200/80",
-    active: "bg-amber-600 text-white ring-amber-700",
-  },
-  drop: {
-    idle: "bg-emerald-50 text-emerald-900 ring-emerald-200/80",
-    active: "bg-emerald-700 text-white ring-emerald-800",
-  },
-  signal: {
-    idle: "bg-teal-50 text-teal-900 ring-teal-200/80",
-    active: "bg-teal-700 text-white ring-teal-800",
-  },
-  browse: {
-    idle: "bg-slate-50 text-slate-800 ring-slate-200/80",
-    active: "bg-slate-600 text-white ring-slate-700",
-  },
-  gone: {
-    idle: "bg-orange-50 text-orange-950 ring-orange-200/80",
-    active: "bg-orange-600 text-white ring-orange-700",
-  },
-  personal: {
-    idle: "bg-violet-50 text-violet-900 ring-violet-200/80",
-    active: "bg-violet-700 text-white ring-violet-800",
-  },
-};
 
 interface SiteHeaderProps {
   stats: DashboardStats;
-  counts?: Partial<Record<"best_deals" | "buy_signals" | "products" | "changes" | "sold", number>>;
+  counts?: Partial<Record<CountKey, number>>;
 }
 
 export function SiteHeader({ stats, counts = {} }: SiteHeaderProps) {
@@ -125,97 +53,83 @@ export function SiteHeader({ stats, counts = {} }: SiteHeaderProps) {
     (href === "/my-list" && pathname.startsWith("/my-list")) ||
     (href === "/products" && pathname.startsWith("/products/"));
 
+  const subtitle =
+    stats.total_products > 0
+      ? [
+          `${stats.total_products.toLocaleString()} products`,
+          stats.total_pages > 0 ? `${stats.total_pages} pages` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : "Awaiting first scrape";
+
   return (
-    <header className="space-y-3 border-b border-black/10 pb-4 sm:pb-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-        <div className="min-w-0 space-y-1">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-gl-gold">
-            Galeries Lafayette Qatar
-          </p>
-          <h1 className="font-display text-xl sm:text-2xl md:text-3xl">
-            <Link href="/" className="hover:opacity-80">
-              Offer Tracker
-            </Link>
-          </h1>
-          <p className="text-[11px] text-neutral-500 sm:text-xs">
-            {stats.total_products > 0
-              ? [
-                  `${stats.total_products.toLocaleString()} products`,
-                  stats.total_pages > 0 ? `${stats.total_pages} pages` : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")
-              : "Awaiting first scrape"}
-          </p>
-        </div>
-        <a
-          href="https://www.galerieslafayette.qa/offer.html"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex min-h-9 w-full shrink-0 items-center justify-center rounded-lg border border-black/15 bg-white px-3 py-2 text-xs font-medium hover:bg-neutral-50 sm:w-auto sm:text-sm"
-        >
-          Open store
-        </a>
-      </div>
-
-      <nav
-        className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 scrollbar-none sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
-        aria-label="Main navigation"
-      >
-        {NAV_GROUPS.map((group, groupIndex) => (
-          <div
-            key={group.id}
-            className="flex shrink-0 items-center gap-1 sm:shrink"
+    <header className="sticky top-0 z-40 -mx-3 border-b border-black/8 bg-gl-cream/92 px-3 pb-3 pt-1 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-3">
+        <div className="flex items-start justify-between gap-3 pt-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-gl-gold">
+              Galeries Lafayette Qatar
+            </p>
+            <h1 className="font-display text-xl leading-tight sm:text-2xl">
+              <Link href="/" className="hover:opacity-80">
+                GF Tracker
+              </Link>
+            </h1>
+            <p className="mt-0.5 text-[11px] text-neutral-500 sm:text-xs">{subtitle}</p>
+          </div>
+          <a
+            href="https://www.galerieslafayette.qa/offer.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-10 shrink-0 items-center rounded-xl border border-black/12 bg-white px-3.5 text-xs font-medium shadow-sm transition hover:border-gl-gold/40 hover:bg-white sm:min-h-11 sm:px-4 sm:text-sm"
           >
-            {groupIndex > 0 && (
-              <span
-                className="mx-0.5 hidden h-4 w-px shrink-0 bg-black/10 sm:block"
-                aria-hidden
-              />
-            )}
-            {group.label ? (
-              <span className="mr-0.5 hidden text-[9px] font-semibold uppercase tracking-wider text-neutral-400 sm:inline">
-                {group.label}
-              </span>
-            ) : null}
-            <div className="flex items-center gap-1">
-              {group.items.map(({ href, label, countKey, watchlist, tone }) => {
-                const active = isActive(href);
-                const count = countKey
-                  ? countFor(countKey)
-                  : watchlist && ready && items.length > 0
-                    ? items.length
-                    : undefined;
-                const styles = TONE[tone];
-                const showCount =
-                  count !== undefined &&
-                  (countKey !== "sold" || count > 0) &&
-                  (!watchlist || count > 0);
+            Store
+          </a>
+        </div>
 
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    title={group.label ? `${group.label}: ${label}` : label}
-                    className={`inline-flex min-h-8 shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ring-1 transition sm:min-h-9 sm:px-3 sm:text-[13px] ${
-                      active ? styles.active : `${styles.idle} hover:brightness-[0.98]`
+        <nav
+          className="flex gap-1.5 overflow-x-auto rounded-2xl bg-white/70 p-1.5 shadow-sm ring-1 ring-black/6 scrollbar-none snap-x snap-mandatory sm:flex-wrap sm:overflow-visible sm:snap-none"
+          aria-label="Main navigation"
+        >
+          {NAV_ITEMS.map(({ href, label, short, countKey, watchlist }) => {
+            const active = isActive(href);
+            const count = countKey
+              ? countFor(countKey)
+              : watchlist && ready && items.length > 0
+                ? items.length
+                : undefined;
+            const showCount =
+              count !== undefined &&
+              (countKey !== "sold" || count > 0) &&
+              (!watchlist || count > 0);
+
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`inline-flex min-h-9 shrink-0 snap-start items-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-2 text-xs font-medium transition sm:min-h-10 sm:text-[13px] ${
+                  active
+                    ? "bg-gl-black text-white shadow-sm"
+                    : "text-neutral-700 hover:bg-neutral-100"
+                }`}
+              >
+                <span className="sm:hidden">{short ?? label}</span>
+                <span className="hidden sm:inline">{label}</span>
+                {showCount && (
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums leading-none ${
+                      active ? "bg-white/20 text-white" : "bg-neutral-200/80 text-neutral-600"
                     }`}
                   >
-                    {label}
-                    {showCount && (
-                      <span
-                        className={`ml-1 tabular-nums ${active ? "opacity-85" : "opacity-60"}`}
-                      >
-                        {count.toLocaleString()}
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </nav>
+                    {count > 999 ? `${Math.round(count / 1000)}k` : count.toLocaleString()}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
     </header>
   );
 }

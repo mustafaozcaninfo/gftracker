@@ -5,43 +5,68 @@ interface StatsCardsProps {
   generatedAt: string;
 }
 
-const items: {
+const PRIMARY: {
   key: keyof DashboardStats;
   label: string;
+  hint: string;
   suffix?: string;
-  accent?: string;
 }[] = [
-  { key: "total_products", label: "Products", accent: "border-l-slate-400" },
-  { key: "buy_signals_count", label: "Buy signals", accent: "border-l-teal-500" },
-  { key: "drops_today", label: "Drops today", accent: "border-l-emerald-500" },
-  { key: "price_changes_today", label: "All changes", accent: "border-l-emerald-400" },
-  { key: "sold_recent_48h", label: "Gone 48h", accent: "border-l-orange-500" },
-  { key: "max_discount", label: "Top disc.", suffix: "%", accent: "border-l-amber-500" },
-  { key: "days_tracked", label: "Days", accent: "border-l-neutral-400" },
+  { key: "total_products", label: "In catalog", hint: "Active offer items" },
+  { key: "buy_signals_count", label: "Buy signals", hint: "Near all-time low" },
+  { key: "drops_today", label: "Drops today", hint: "Price cuts logged" },
+  { key: "max_discount", label: "Top discount", hint: "Highest % off now", suffix: "%" },
+];
+
+const SECONDARY: { key: keyof DashboardStats; label: string; suffix?: string }[] = [
+  { key: "sold_recent_48h", label: "Gone 48h" },
+  { key: "price_changes_today", label: "Changes today" },
+  { key: "avg_discount", label: "Avg off", suffix: "%" },
+  { key: "days_tracked", label: "Days tracked" },
 ];
 
 export function StatsCards({ stats, generatedAt }: StatsCardsProps) {
   return (
-    <section className="space-y-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-        <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-neutral-500">
-          Live snapshot
-        </p>
-        <p className="text-[10px] text-neutral-400">Updated {generatedAt}</p>
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.2em] text-neutral-500">
+            Live snapshot
+          </p>
+          <h2 className="font-display text-2xl sm:text-3xl">Offer at a glance</h2>
+        </div>
+        <p className="text-xs text-neutral-500">Updated {generatedAt}</p>
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {items.map(({ key, label, suffix, accent }) => (
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+        {PRIMARY.map(({ key, label, hint, suffix }) => (
           <div
             key={key}
-            className={`inline-flex min-w-0 items-baseline gap-1.5 rounded-md border border-black/8 bg-white py-1 pl-2 pr-2.5 text-xs shadow-sm border-l-2 ${accent ?? "border-l-neutral-300"}`}
+            className="rounded-2xl border border-black/8 bg-white p-3 shadow-sm sm:p-4"
           >
-            <span className="truncate text-[10px] text-neutral-500">{label}</span>
-            <span className="shrink-0 font-display text-sm font-medium tabular-nums text-gl-black">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-neutral-500 sm:text-xs">
+              {label}
+            </p>
+            <p className="mt-1 font-display text-2xl tabular-nums text-gl-black sm:text-3xl">
+              {(stats[key] ?? 0).toLocaleString()}
+              {suffix}
+            </p>
+            <p className="mt-1 hidden text-[11px] text-neutral-500 sm:block">{hint}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {SECONDARY.map(({ key, label, suffix }) => (
+          <span
+            key={key}
+            className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs ring-1 ring-black/6"
+          >
+            <span className="text-neutral-500">{label}</span>
+            <span className="font-medium tabular-nums text-gl-black">
               {(stats[key] ?? 0).toLocaleString()}
               {suffix}
             </span>
-          </div>
+          </span>
         ))}
       </div>
     </section>
