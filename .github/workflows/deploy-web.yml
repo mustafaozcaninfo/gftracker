@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - "web/**"
+      - "models.py"
+      - "export_web.py"
+      - "gender.py"
       - ".github/workflows/deploy-web.yml"
   workflow_dispatch:
 
@@ -17,6 +20,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+
+      - name: Prepare data directory
+        run: mkdir -p data
+
+      - name: Restore data cache
+        uses: actions/cache/restore@v4
+        with:
+          path: data/
+          key: gftracker-data-v2-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            gftracker-data-v2-${{ github.ref_name }}-
+            gftracker-data-v2-
+
+      - name: Export web JSON from cached database
+        run: python export_web.py
 
       - uses: actions/setup-node@v4
         with:

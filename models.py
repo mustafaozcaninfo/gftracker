@@ -799,12 +799,17 @@ class ProductStore:
                     (SELECT COUNT(DISTINCT price_date) FROM daily_prices d2
                      WHERE d2.product_id = p.product_id) AS days_tracked
                 FROM products p
-                LEFT JOIN daily_prices dp
-                    ON dp.product_id = p.product_id AND dp.price_date = ?
+                LEFT JOIN daily_prices dp ON dp.rowid = (
+                    SELECT d2.rowid
+                    FROM daily_prices d2
+                    WHERE d2.product_id = p.product_id
+                    ORDER BY d2.price_date DESC, d2.scraped_at DESC
+                    LIMIT 1
+                )
                 WHERE p.is_active = 1
-                ORDER BY dp.discount_percent DESC, dp.current_price ASC
-                """,
-                (today,),
+                ORDER BY COALESCE(dp.discount_percent, -1) DESC,
+                         COALESCE(dp.current_price, 999999999) ASC
+                """
             ).fetchall()
 
         result: list[dict[str, Any]] = []

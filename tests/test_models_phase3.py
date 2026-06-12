@@ -65,6 +65,19 @@ class ProductStorePhase3Tests(unittest.TestCase):
         self.assertIsNotNone(row)
         self.assertEqual(float(row["new_current_price"]), 90.0)
 
+    def test_analytics_uses_latest_price_when_today_missing(self) -> None:
+        product = _product("1", 150.0)
+
+        with patch.object(ProductStore, "_today", return_value="2026-06-11"):
+            self.store.record_daily_scrape([product], self.run_id)
+
+        with patch.object(ProductStore, "_today", return_value="2026-06-12"):
+            analytics = self.store.get_products_with_analytics()
+
+        self.assertEqual(len(analytics), 1)
+        self.assertEqual(analytics[0]["current_price"], 150.0)
+        self.assertEqual(analytics[0]["price_date"], "2026-06-11")
+
     def test_sold_recent_uses_qatar_cutoff(self) -> None:
         now_qatar = datetime.now(QATAR_TZ)
         recent = (now_qatar - timedelta(hours=2)).isoformat(timespec="seconds")

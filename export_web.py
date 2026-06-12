@@ -171,6 +171,15 @@ def validate_export(out_dir: str | Path) -> None:
     if "sold_all" not in sold_payload or "sold_recent" not in sold_payload:
         raise ValueError("Export validation failed: sold_products.json missing sold lists")
 
+    products = products_payload.get("products") or []
+    if products:
+        with_price = sum(1 for p in products if p.get("current_price") is not None)
+        if with_price == 0:
+            raise ValueError(
+                "Export validation failed: no products have current_price "
+                "(run scrape or restore data cache before deploy)"
+            )
+
 
 def export_dashboard(
     config_path: str | Path = "config.yaml",
