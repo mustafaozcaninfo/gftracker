@@ -3,11 +3,12 @@
 import Image from "next/image";
 import type { Product } from "@/lib/types";
 import { formatDate, formatQAR } from "@/lib/format";
-import { buildProductsHref, productDetailHref } from "@/lib/product-filters";
+import { productDetailHref } from "@/lib/product-filters";
 import type { WatchlistItem } from "@/lib/watchlist";
 import { priceDelta } from "@/lib/watchlist";
 import Link from "next/link";
 import { BrandLink } from "./BrandLink";
+import { CompareToggle } from "./CompareToggle";
 
 interface WatchlistItemCardProps {
   item: WatchlistItem;
@@ -80,13 +81,16 @@ export function WatchlistItemCard({
                 Liked {formatDate(item.liked_at)} · SKU {item.snapshot.sku}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => onRemove(item.product_id)}
-              className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-xl border border-black/10 px-3 py-1.5 text-xs text-neutral-600 hover:bg-neutral-50 sm:text-sm"
-            >
-              Remove
-            </button>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <CompareToggle productId={item.product_id} />
+              <button
+                type="button"
+                onClick={() => onRemove(item.product_id)}
+                className="inline-flex min-h-9 items-center justify-center rounded-xl border border-black/10 px-3 py-1.5 text-xs text-neutral-600 hover:bg-neutral-50 sm:text-sm"
+              >
+                Remove
+              </button>
+            </div>
           </div>
 
           {formatSizes(sizes, isOneSize) && (
@@ -167,24 +171,18 @@ export function WatchlistItemCard({
           <div className="flex flex-wrap gap-2">
             <Link
               href={productDetailHref(item.product_id)}
-              className="inline-flex min-h-11 items-center rounded-xl bg-gl-black px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800"
+              className="inline-flex min-h-10 items-center rounded-xl bg-gl-black px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
             >
-              View details
+              Details
             </Link>
             <a
               href={storeUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center rounded-xl border border-black/10 px-4 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+              className="inline-flex min-h-10 items-center rounded-xl border border-black/10 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
             >
-              View on store
+              Store
             </a>
-            <Link
-              href={buildProductsHref({ brand: item.snapshot.brand })}
-              className="inline-flex min-h-11 items-center rounded-xl border border-black/10 px-4 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
-            >
-              More from brand
-            </Link>
           </div>
         </div>
       </div>

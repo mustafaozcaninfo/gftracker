@@ -12,14 +12,48 @@ import { PriceChanges } from "./PriceChanges";
 import { WatchlistItemCard } from "./WatchlistItemCard";
 
 type TabKey = "liked" | "changes";
+type LikedSort = "recent" | "discount" | "price_asc" | "price_desc" | "name";
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: "liked", label: "Liked" },
-  { key: "changes", label: "Price Changes" },
+  { key: "liked", label: "Saved" },
+  { key: "changes", label: "Price moves" },
 ];
 
 interface MyListTabsProps {
   changes: PriceChange[];
+}
+
+function sortLiked<
+  T extends {
+    item: { liked_at: string; snapshot: { name: string } };
+    current?: { discount_percent?: number; current_price?: number };
+  },
+>(rows: T[], sort: LikedSort): T[] {
+  return [...rows].sort((a, b) => {
+    switch (sort) {
+      case "discount":
+        return (
+          (b.current?.discount_percent ?? 0) -
+            (a.current?.discount_percent ?? 0) ||
+          a.item.liked_at.localeCompare(b.item.liked_at)
+        );
+      case "price_asc":
+        return (
+          (a.current?.current_price ?? Number.POSITIVE_INFINITY) -
+            (b.current?.current_price ?? Number.POSITIVE_INFINITY) ||
+          a.item.liked_at.localeCompare(b.item.liked_at)
+        );
+      case "price_desc":
+        return (
+          (b.current?.current_price ?? 0) - (a.current?.current_price ?? 0) ||
+          a.item.liked_at.localeCompare(b.item.liked_at)
+        );
+      case "name":
+        return a.item.snapshot.name.localeCompare(b.item.snapshot.name);
+      default:
+        return b.item.liked_at.localeCompare(a.item.liked_at);
+    }
+  });
 }
 
 export function MyListTabs({ changes }: MyListTabsProps) {
@@ -28,6 +62,7 @@ export function MyListTabs({ changes }: MyListTabsProps) {
   const { items, remove, ready, importItems } = useWatchlist();
   const { products, loading } = useProductsCatalog();
   const [importNotice, setImportNotice] = useState<string | null>(null);
+  const [likedSort, setLikedSort] = useState<LikedSort>("recent");
 
   const tab: TabKey =
     searchParams.get("tab") === "changes" ? "changes" : "liked";
@@ -69,7 +104,12 @@ export function MyListTabs({ changes }: MyListTabsProps) {
     [items, productMap],
   );
 
-  const changedLiked = likedWithDelta.filter(({ delta }) => delta.changed);
+  const sortedLiked = useMemo(
+    () => sortLiked(likedWithDelta, likedSort),
+    [likedWithDelta, likedSort],
+  );
+
+  const changedCount = likedWithDelta.filter(({ delta }) => delta.changed).length;
 
   const watchedChanges = useMemo(() => {
     if (!items.length) return [];
@@ -80,12 +120,12 @@ export function MyListTabs({ changes }: MyListTabsProps) {
   return (
     <section className="space-y-4">
       <div>
-        <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-neutral-500">
           Personal
         </p>
         <h2 className="font-display text-xl sm:text-2xl">My List</h2>
         <p className="mt-1 text-sm text-neutral-600">
-          Like products to track price moves on this device.
+          Save items on this device — use ⇄ on any card to compare up to four products.
         </p>
       </div>
 
@@ -111,7 +151,7 @@ export function MyListTabs({ changes }: MyListTabsProps) {
             aria-controls={`mylist-panel-${key}`}
             aria-selected={tab === key}
             onClick={() => setTab(key)}
-            className={`inline-flex min-h-11 shrink-0 items-center rounded-full px-4 py-2.5 text-sm font-medium transition ${
+            className={`inline-flex min-h-11 shrink-0 items-center rounded-xl px-4 py-2.5 text-sm font-medium transition ${
               tab === key
                 ? "bg-gl-black text-white"
                 : "bg-white text-neutral-700 ring-1 ring-black/10 hover:bg-neutral-50"
@@ -141,9 +181,9 @@ export function MyListTabs({ changes }: MyListTabsProps) {
             </p>
           ) : items.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center">
-              <p className="text-neutral-600">No liked products yet.</p>
+              <p className="text-neutral-600">No saved products yet.</p>
               <p className="mt-2 text-sm text-neutral-500">
-                Tap ♡ on any product card to start tracking.
+                Tap ♡ on a product or use ⇄ to add items for compare.
               </p>
               <Link
                 href="/products"
@@ -154,18 +194,36 @@ export function MyListTabs({ changes }: MyListTabsProps) {
             </div>
           ) : (
             <>
-              {changedLiked.length > 0 && (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-                  <p className="font-medium">
-                    {changedLiked.length} liked product
-                    {changedLiked.length === 1 ? "" : "s"} changed since you saved
-                    them.
-                  </p>
+              {changedCount > 0 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                  <span className="font-medium">{changedCount}</span> saved item
+                  {changedCount === 1 ? "" : "s"} changed price since you liked them.
                 </div>
               )}
 
-              <div className="grid gap-4">
-                {likedWithDelta.map(({ item, current }) => (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-neutral-500">
+                  {items.length} saved on this device
+                </p>
+                <label htmlFor="liked-sort" className="flex items-center gap-2 text-sm">
+                  <span className="text-neutral-500">Sort</span>
+                  <select
+                    id="liked-sort"
+                    value={likedSort}
+                    onChange={(e) => setLikedSort(e.target.value as LikedSort)}
+                    className="min-h-10 rounded-xl border border-black/10 px-3 py-2 text-sm outline-none ring-gl-gold focus:ring-2"
+                  >
+                    <option value="recent">Recently liked</option>
+                    <option value="discount">Highest discount</option>
+                    <option value="price_asc">Price: low to high</option>
+                    <option value="price_desc">Price: high to low</option>
+                    <option value="name">Name A–Z</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="grid gap-3">
+                {sortedLiked.map(({ item, current }) => (
                   <WatchlistItemCard
                     key={item.product_id}
                     item={item}
@@ -189,17 +247,26 @@ export function MyListTabs({ changes }: MyListTabsProps) {
           {items.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center">
               <p className="text-neutral-600">
-                Like products first to see their price changes here.
+                Save products first to see their price moves here.
               </p>
               <Link
-                href="/price-changes"
+                href="/products"
                 className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-gl-black px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-800"
               >
-                View all price changes
+                Browse products
               </Link>
             </div>
+          ) : watchedChanges.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center text-neutral-500">
+              No logged price changes for your saved items yet.
+            </div>
           ) : (
-            <PriceChanges changes={watchedChanges} />
+            <PriceChanges
+              changes={watchedChanges}
+              title="Price moves on your list"
+              subtitle="Changes for products you saved"
+              hideHeader={false}
+            />
           )}
         </div>
       )}

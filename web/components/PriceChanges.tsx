@@ -5,17 +5,30 @@ import { productDetailHref } from "@/lib/product-filters";
 
 interface PriceChangesProps {
   changes: PriceChange[];
+  title?: string;
+  subtitle?: string;
+  hideHeader?: boolean;
 }
 
-export function PriceChanges({ changes }: PriceChangesProps) {
+export function PriceChanges({
+  changes,
+  title = "Recent Price Changes",
+  subtitle,
+  hideHeader = false,
+}: PriceChangesProps) {
   return (
     <section className="space-y-4">
-      <div>
-        <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
-          History
-        </p>
-        <h2 className="font-display text-xl sm:text-2xl">Recent Price Changes</h2>
-      </div>
+      {!hideHeader && (
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
+            History
+          </p>
+          <h2 className="font-display text-xl sm:text-2xl">{title}</h2>
+          {subtitle && (
+            <p className="mt-1 text-sm text-neutral-600">{subtitle}</p>
+          )}
+        </div>
+      )}
 
       {changes.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center text-neutral-500">

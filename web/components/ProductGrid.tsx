@@ -10,7 +10,6 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useProductsCatalog } from "@/lib/catalog-client";
-import type { Product } from "@/lib/types";
 import {
   deriveFilterFacets,
   isBrandInCatalog,
@@ -23,11 +22,7 @@ import {
   buildProductsHref,
   parseProductFilters,
 } from "@/lib/product-filters";
-import {
-  SIZE_FILTER_MULTI,
-  SIZE_FILTER_ONE,
-} from "@/lib/sizes";
-import { ActiveFilterChips } from "./ActiveFilterChips";
+import { CatalogFilters } from "./CatalogFilters";
 import { ProductCard } from "./ProductCard";
 
 const PAGE_SIZE = 24;
@@ -106,7 +101,6 @@ export function ProductGrid() {
     [products, filters, deferredQuery],
   );
 
-  // Only validate after catalog loads — empty products made deep links reset to /products
   useEffect(() => {
     if (loading || products.length === 0) return;
 
@@ -164,177 +158,19 @@ export function ProductGrid() {
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
-            Catalog
-          </p>
-          <h2 className="font-display text-xl sm:text-2xl">All Products</h2>
-        </div>
-        <p className="text-xs text-neutral-500 sm:text-sm">
-          Showing {visible.length.toLocaleString()} of{" "}
-          {filtered.length.toLocaleString()}
-          {filtered.length !== products.length &&
-            ` (${products.length.toLocaleString()} total)`}
-        </p>
-      </div>
-
-      <ActiveFilterChips filters={filters} searchQuery={deferredQuery} />
-
-      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-black/10 bg-white p-3 sm:gap-3 sm:p-4 md:grid-cols-2 xl:grid-cols-3">
-        <label htmlFor="catalog-search" className="space-y-1.5 text-sm">
-          <span className="text-neutral-500">Search</span>
-          <input
-            id="catalog-search"
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Brand, name, SKU..."
-            className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
-          />
-        </label>
-
-        <label htmlFor="catalog-brand" className="space-y-1.5 text-sm">
-          <span className="text-neutral-500">
-            Brand
-            {facets.brands.length > 0 && facets.brands.length < products.length && (
-              <span className="ml-1 text-neutral-400">({facets.brands.length})</span>
-            )}
-          </span>
-          <select
-            id="catalog-brand"
-            value={brand}
-            onChange={(e) => updateFilters({ brand: e.target.value, size: "all" })}
-            className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
-          >
-            <option value="all">All brands</option>
-            {(brand !== "all" && !facets.brands.includes(brand)
-              ? [brand, ...facets.brands]
-              : facets.brands
-            ).map((b) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {facets.genders.length > 0 && (
-          <label htmlFor="catalog-gender" className="space-y-1.5 text-sm">
-            <span className="text-neutral-500">
-              Gender
-              {facets.genders.length < 4 && (
-                <span className="ml-1 text-neutral-400">({facets.genders.length})</span>
-              )}
-            </span>
-            <select
-              id="catalog-gender"
-              value={gender}
-              onChange={(e) =>
-                updateFilters({
-                  gender: e.target.value as typeof filters.gender,
-                  size: "all",
-                })
-              }
-              className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
-            >
-              <option value="all">All</option>
-              {facets.genders.map((g) => (
-                <option key={g} value={g}>
-                  {g.charAt(0).toUpperCase() + g.slice(1)}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-
-        <label htmlFor="catalog-size" className="space-y-1.5 text-sm">
-          <span className="text-neutral-500">
-            Size
-            {facets.sizes.length > 0 && (
-              <span className="ml-1 text-neutral-400">({facets.sizes.length})</span>
-            )}
-          </span>
-          <select
-            id="catalog-size"
-            value={size}
-            onChange={(e) => updateFilters({ size: e.target.value })}
-            className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
-          >
-            <option value="all">All sizes</option>
-            {facets.hasOneSize && (
-              <option value={SIZE_FILTER_ONE}>One Size</option>
-            )}
-            {facets.hasMultiSize && (
-              <option value={SIZE_FILTER_MULTI}>Multiple sizes</option>
-            )}
-            {facets.sizes.length > 0 && (
-              <optgroup label="Specific size">
-                {facets.sizes.map((label) => (
-                  <option key={label} value={label}>
-                    {label}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-          </select>
-        </label>
-
-        <label htmlFor="catalog-maxprice" className="space-y-1.5 text-sm">
-          <span className="text-neutral-500">Max price (QAR)</span>
-          <input
-            id="catalog-maxprice"
-            type="number"
-            min={0}
-            step={50}
-            value={maxPriceInput}
-            onChange={(e) => setMaxPriceInput(e.target.value)}
-            placeholder="Any"
-            className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
-          />
-        </label>
-
-        <label htmlFor="catalog-mindisc" className="space-y-2 text-sm">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-neutral-500">Min discount</span>
-            <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium tabular-nums">
-              {minDiscount}%
-            </span>
-          </div>
-          <input
-            id="catalog-mindisc"
-            type="range"
-            min={0}
-            max={70}
-            step={5}
-            value={minDiscount}
-            onChange={(e) =>
-              updateFilters({ mindisc: Number(e.target.value) })
-            }
-            className="mt-1 w-full"
-            aria-valuemin={0}
-            aria-valuemax={70}
-            aria-valuenow={minDiscount}
-          />
-        </label>
-
-        <label htmlFor="catalog-sort" className="space-y-1.5 text-sm">
-          <span className="text-neutral-500">Sort by</span>
-          <select
-            id="catalog-sort"
-            value={sort}
-            onChange={(e) =>
-              updateFilters({ sort: e.target.value as SortKey })
-            }
-            className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
-          >
-            <option value="discount">Highest discount</option>
-            <option value="price_asc">Price: low to high</option>
-            <option value="price_desc">Price: high to low</option>
-            <option value="name">Name A–Z</option>
-          </select>
-        </label>
-      </div>
+      <CatalogFilters
+        filters={filters}
+        searchQuery={deferredQuery}
+        query={query}
+        maxPriceInput={maxPriceInput}
+        minDiscount={minDiscount}
+        facets={facets}
+        totalProducts={products.length}
+        resultCount={filtered.length}
+        onQueryChange={setQuery}
+        onMaxPriceChange={setMaxPriceInput}
+        onUpdate={updateFilters}
+      />
 
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center">

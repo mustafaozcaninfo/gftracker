@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { loadMeta } from "@/lib/data";
 import { pageMetadata } from "@/lib/metadata";
 import { PageShell } from "@/components/PageShell";
@@ -29,7 +30,15 @@ export default async function BrandsPage() {
             discount stats
           </p>
         </div>
-        <BrandsGrid />
+        <Suspense
+          fallback={
+            <p className="rounded-2xl border border-black/10 bg-white p-8 text-center text-neutral-500">
+              Loading brands…
+            </p>
+          }
+        >
+          <BrandsGrid />
+        </Suspense>
       </section>
     </PageShell>
   );
