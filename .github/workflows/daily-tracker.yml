@@ -1,8 +1,7 @@
 name: Hourly GF Tracker
 
 on:
-  # GitHub schedule bu private repoda güvenilir değil — Cloudflare Worker tetikliyor.
-  # workers/github-cron → repository_dispatch hourly-scrape
+  # Cloudflare Worker cron → workflow_dispatch (see workers/github-cron)
   workflow_dispatch:
   repository_dispatch:
     types: [hourly-scrape]

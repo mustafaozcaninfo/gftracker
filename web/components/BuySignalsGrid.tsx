@@ -29,8 +29,8 @@ export function BuySignalsGrid() {
   if (!signals.length) {
     return (
       <p className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center text-neutral-500">
-        No buy signals yet. Products need at least 2 days of price history before
-        all-time-low detection is meaningful — check back after tomorrow&apos;s hourly scrapes.
+        No buy signals yet. Need 2+ days of history and at least one prior
+        higher price before near-low alerts are shown.
       </p>
     );
   }

@@ -214,6 +214,13 @@ class OfferScraper:
         return 1
 
     @staticmethod
+    def _brand_from_name(name: str) -> str:
+        parts = name.split()
+        if len(parts) >= 2 and parts[1].lower() == "kids":
+            return f"{parts[0]} Kids"
+        return parts[0] if parts else ""
+
+    @staticmethod
     def _parse_price_amount(element) -> float | None:
         if element is None:
             return None
@@ -334,6 +341,8 @@ class OfferScraper:
 
             name_el = item.select_one("strong.product.name a.product-item-link")
             name = name_el.get_text(strip=True) if name_el else ""
+            if not brand.strip() and name:
+                brand = self._brand_from_name(name)
 
             link_el = item.select_one("a.product-item-link")
             href = link_el.get("href", "") if link_el else ""

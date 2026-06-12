@@ -45,7 +45,7 @@ export default async function HomePage() {
     {
       href: "/buy-signals",
       title: "Buy Signals",
-      desc: "At or near all-time low (2+ days tracked)",
+      desc: "Near all-time low after a real price move",
       count: stats.buy_signals_count ?? 0,
       countLabel: "signals",
       tone: "border-teal-200/80 bg-teal-50/80",

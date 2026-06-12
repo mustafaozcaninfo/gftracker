@@ -702,6 +702,17 @@ class ProductStore:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def _product_ids_with_price_variation(self) -> set[str]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT product_id FROM daily_prices
+                GROUP BY product_id
+                HAVING COUNT(DISTINCT current_price) > 1
+                """
+            ).fetchall()
+        return {row["product_id"] for row in rows}
+
     def get_buy_signals(
         self,
         max_pct_above_lowest: float = 2.0,
@@ -709,10 +720,12 @@ class ProductStore:
     ) -> list[dict[str, Any]]:
         """Products at or near their all-time low — good day to buy."""
         products = self.get_products_with_analytics()
+        varied_ids = self._product_ids_with_price_variation()
         signals = [
             p
             for p in products
             if (p.get("days_tracked") or 0) >= min_days_tracked
+            and p.get("product_id") in varied_ids
             and (
                 p.get("is_at_lowest")
                 or (p.get("pct_above_lowest", 100) <= max_pct_above_lowest)
