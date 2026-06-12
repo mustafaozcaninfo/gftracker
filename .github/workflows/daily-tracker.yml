@@ -38,11 +38,18 @@ jobs:
             gftracker-data-v2-
 
       - name: Hourly scrape + export
+        id: scrape
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python daily_tracker.py
+        continue-on-error: true
+
+      - name: Scrape status
+        if: steps.scrape.outcome == 'failure'
+        run: |
+          echo "::warning::Scrape had page failures or errors; continuing with cached/exported data for deploy."
 
       - name: Save data cache
         if: always()

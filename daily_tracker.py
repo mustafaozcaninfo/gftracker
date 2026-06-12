@@ -37,7 +37,14 @@ def main() -> int:
         f"pages {summary['pages_scraped']}/{summary['total_pages']}, "
         f"web={summary.get('web_dashboard_path')}"
     )
-    return 0 if summary.get("pages_failed", 0) == 0 else 2
+    failed = int(summary.get("pages_failed", 0) or 0)
+    total = int(summary.get("total_pages", 0) or 0)
+    if failed == 0:
+        return 0
+    # Allow deploy when the catalog scrape is nearly complete (e.g. transient 503s).
+    if total > 0 and failed / total <= 0.05:
+        return 0
+    return 2
 
 
 if __name__ == "__main__":
