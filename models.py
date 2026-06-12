@@ -3,9 +3,12 @@
 Architecture
 ------------
 products        Master catalog (one row per product_id)
-scrape_runs     Each daily refresh session
+scrape_runs     Each hourly session; completed runs store catalog_snapshot JSON
 daily_prices    One price row per product per calendar day (UPSERT on same-day refresh)
 price_changes   Log when price moves between days
+
+Sold/gone: compare previous completed catalog_snapshot vs current full scrape;
+only IDs in previous-but-not-current are marked inactive.
 """
 
 from __future__ import annotations
@@ -177,6 +180,18 @@ class ProductStore:
             )
         if "removed_at" not in product_cols:
             conn.execute("ALTER TABLE products ADD COLUMN removed_at TEXT")
+
+        run_cols = {row[1] for row in conn.execute("PRAGMA table_info(scrape_runs)")}
+        if "catalog_snapshot" not in run_cols:
+            conn.execute("ALTER TABLE scrape_runs ADD COLUMN catalog_snapshot TEXT")
+        if "catalog_removed" not in run_cols:
+            conn.execute(
+                "ALTER TABLE scrape_runs ADD COLUMN catalog_removed INTEGER NOT NULL DEFAULT 0"
+            )
+        if "catalog_added" not in run_cols:
+            conn.execute(
+                "ALTER TABLE scrape_runs ADD COLUMN catalog_added INTEGER NOT NULL DEFAULT 0"
+            )
 
     @staticmethod
     def _parse_sizes_json(raw: str | None) -> list[str]:
@@ -422,30 +437,127 @@ class ProductStore:
                 (pages_scraped, products_found, run_id),
             )
 
-    def finalize_scrape_catalog(self, seen_product_ids: list[str]) -> None:
-        """Mark products missing from the latest full scrape as inactive."""
-        if not seen_product_ids:
-            return
-        now = datetime.now().isoformat(timespec="seconds")
+    def get_last_catalog_snapshot(self, before_run_id: int) -> tuple[int | None, set[str]]:
+        """Product IDs from the most recent completed scrape with a saved snapshot."""
         with self._connect() as conn:
-            placeholders = ",".join("?" * len(seen_product_ids))
-            conn.execute(
-                f"""
-                UPDATE products
-                SET is_active = 0, removed_at = ?
-                WHERE product_id NOT IN ({placeholders})
-                  AND is_active = 1
+            row = conn.execute(
+                """
+                SELECT id, catalog_snapshot
+                FROM scrape_runs
+                WHERE id < ?
+                  AND status = 'completed'
+                  AND catalog_snapshot IS NOT NULL
+                  AND catalog_snapshot != ''
+                ORDER BY id DESC
+                LIMIT 1
                 """,
-                [now, *seen_product_ids],
+                (before_run_id,),
+            ).fetchone()
+        if not row:
+            return None, set()
+        try:
+            ids = {str(pid) for pid in json.loads(row["catalog_snapshot"])}
+        except (json.JSONDecodeError, TypeError):
+            return int(row["id"]), set()
+        return int(row["id"]), ids
+
+    def get_active_catalog_ids(self) -> set[str]:
+        """Active offer IDs currently stored (bootstrap when no snapshot exists yet)."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT product_id FROM products WHERE is_active = 1"
+            ).fetchall()
+        return {str(row["product_id"]) for row in rows}
+
+    def apply_catalog_diff(
+        self,
+        *,
+        previous_ids: set[str],
+        current_ids: set[str],
+        run_id: int,
+        baseline: str,
+    ) -> dict[str, int]:
+        """Compare previous vs current full-catalog snapshots and mark sold/gone.
+
+        Only products present in *previous* but missing from *current* are marked
+        inactive. This is explicit run-to-run diffing, not a blind DB sweep.
+        """
+        removed_ids = previous_ids - current_ids
+        added_ids = current_ids - previous_ids
+        now = datetime.now().isoformat(timespec="seconds")
+
+        with self._connect() as conn:
+            if removed_ids:
+                placeholders = ",".join("?" * len(removed_ids))
+                conn.execute(
+                    f"""
+                    UPDATE products
+                    SET is_active = 0, removed_at = ?
+                    WHERE product_id IN ({placeholders})
+                      AND is_active = 1
+                    """,
+                    [now, *removed_ids],
+                )
+
+            conn.execute(
+                """
+                UPDATE scrape_runs
+                SET catalog_snapshot = ?,
+                    catalog_removed = ?,
+                    catalog_added = ?
+                WHERE id = ?
+                """,
+                (
+                    json.dumps(sorted(current_ids), ensure_ascii=False),
+                    len(removed_ids),
+                    len(added_ids),
+                    run_id,
+                ),
             )
+
+        return {
+            "baseline": baseline,
+            "previous_size": len(previous_ids),
+            "current_size": len(current_ids),
+            "removed": len(removed_ids),
+            "added": len(added_ids),
+        }
+
+    def finalize_scrape_catalog(
+        self,
+        current_ids: list[str],
+        *,
+        run_id: int,
+    ) -> dict[str, int]:
+        """Diff the latest complete scrape against the previous catalog snapshot."""
+        current_set = {str(pid) for pid in current_ids if pid}
+        if not current_set:
+            return {
+                "baseline": "none",
+                "previous_size": 0,
+                "current_size": 0,
+                "removed": 0,
+                "added": 0,
+            }
+
+        prev_run_id, previous_ids = self.get_last_catalog_snapshot(before_run_id=run_id)
+        if previous_ids:
+            baseline = f"snapshot:{prev_run_id}"
+        else:
+            previous_ids = self.get_active_catalog_ids()
+            baseline = "active_db_bootstrap"
+
+        return self.apply_catalog_diff(
+            previous_ids=previous_ids,
+            current_ids=current_set,
+            run_id=run_id,
+            baseline=baseline,
+        )
 
     def record_daily_scrape(
         self,
         products: list[Product],
         scrape_run_id: int,
-        *,
-        finalize: bool = False,
-        all_seen_ids: list[str] | None = None,
     ) -> tuple[list[PriceChange], ScrapeStats]:
         stats = ScrapeStats(products_found=len(products), scrape_run_id=scrape_run_id)
         changes: list[PriceChange] = []
@@ -595,9 +707,6 @@ class ProductStore:
                                 change.timestamp,
                             ),
                         )
-
-            if finalize and all_seen_ids:
-                self.finalize_scrape_catalog(all_seen_ids)
 
         return changes, stats
 
@@ -952,7 +1061,8 @@ class ProductStore:
             rows = conn.execute(
                 """
                 SELECT id, run_date, started_at, completed_at, total_pages,
-                       pages_scraped, products_found, status
+                       pages_scraped, products_found, status,
+                       catalog_removed, catalog_added
                 FROM scrape_runs
                 ORDER BY id DESC
                 LIMIT ?

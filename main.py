@@ -49,6 +49,7 @@ def run_update(config_path: str | Path = "config.yaml", verbose: bool = False) -
     price_changes = 0
 
     run_id = store.start_scrape_run(total_pages=0)
+    catalog_diff: dict[str, int | str] = {}
 
     try:
         for page, page_products, total in scraper.iter_pages():
@@ -65,9 +66,7 @@ def run_update(config_path: str | Path = "config.yaml", verbose: bool = False) -
             pages_ok += 1
             all_products.extend(page_products)
             all_ids.extend(p.product_id for p in page_products)
-            batch_changes, batch_stats = store.record_daily_scrape(
-                page_products, run_id, finalize=False
-            )
+            batch_changes, batch_stats = store.record_daily_scrape(page_products, run_id)
             changes.extend(batch_changes)
             new_products += batch_stats.new_products
             price_changes += batch_stats.price_changes
@@ -76,12 +75,19 @@ def run_update(config_path: str | Path = "config.yaml", verbose: bool = False) -
             )
 
         if pages_failed == 0 and total_pages > 0 and pages_ok >= total_pages:
-            store.record_daily_scrape(
-                [], run_id, finalize=True, all_seen_ids=list(dict.fromkeys(all_ids))
+            current_ids = list(dict.fromkeys(all_ids))
+            catalog_diff = store.finalize_scrape_catalog(current_ids, run_id=run_id)
+            logger.info(
+                "Catalog diff (%s): %s -> %s products, %s removed, %s added",
+                catalog_diff.get("baseline"),
+                catalog_diff.get("previous_size"),
+                catalog_diff.get("current_size"),
+                catalog_diff.get("removed"),
+                catalog_diff.get("added"),
             )
         else:
             logger.warning(
-                "Skipping sold/gone finalize: pages_ok=%s total_pages=%s pages_failed=%s",
+                "Skipping catalog diff (sold/gone): pages_ok=%s total_pages=%s pages_failed=%s",
                 pages_ok,
                 total_pages,
                 pages_failed,
@@ -107,6 +113,7 @@ def run_update(config_path: str | Path = "config.yaml", verbose: bool = False) -
         "pages_scraped": pages_ok,
         "pages_failed": pages_failed,
         "products_found": len(all_products),
+        "catalog_diff": catalog_diff,
     }
     from models import ScrapeStats
 

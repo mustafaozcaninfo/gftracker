@@ -45,7 +45,7 @@ def scrape_and_save(config: dict, export_every: int = 20) -> dict:
         all_products.extend(page_products)
         all_ids.extend(p.product_id for p in page_products)
 
-        changes, stats = store.record_daily_scrape(page_products, run_id, finalize=False)
+        changes, stats = store.record_daily_scrape(page_products, run_id)
         total_changes += stats.price_changes
         total_new += stats.new_products
 
@@ -78,12 +78,25 @@ def scrape_and_save(config: dict, export_every: int = 20) -> dict:
                 len(all_products),
             )
 
-    store.record_daily_scrape(
-        [],
-        run_id,
-        finalize=True,
-        all_seen_ids=list(dict.fromkeys(all_ids)),
-    )
+    if pages_failed == 0 and total_pages > 0 and pages_ok >= total_pages:
+        diff = store.finalize_scrape_catalog(
+            list(dict.fromkeys(all_ids)),
+            run_id=run_id,
+        )
+        logger.info(
+            "Catalog diff (%s): %s removed, %s added",
+            diff.get("baseline"),
+            diff.get("removed"),
+            diff.get("added"),
+        )
+    else:
+        logger.warning(
+            "Skipping catalog diff: pages_ok=%s total_pages=%s pages_failed=%s",
+            pages_ok,
+            total_pages,
+            pages_failed,
+        )
+
     store.complete_scrape_run(
         run_id,
         pages_scraped=pages_ok,
