@@ -3,7 +3,16 @@ const PRECACHE = ["/", "/offline.html", "/data/meta.json", "/data/sold_products.
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting()),
+    caches
+      .open(CACHE)
+      .then((cache) =>
+        Promise.all(
+          PRECACHE.map((url) =>
+            cache.add(url).catch((err) => console.warn("Precache skip:", url, err)),
+          ),
+        ),
+      )
+      .then(() => self.skipWaiting()),
   );
 });
 

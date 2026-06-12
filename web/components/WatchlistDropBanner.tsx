@@ -1,29 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import type { Product } from "@/lib/types";
+import { useMemo, useState } from "react";
+import { useProductsCatalog } from "@/lib/catalog-client";
 import { formatQAR } from "@/lib/format";
 import { priceDelta } from "@/lib/watchlist";
 import { useWatchlist } from "./WatchlistProvider";
 
 export function WatchlistDropBanner() {
   const { items, ready } = useWatchlist();
-  const [products, setProducts] = useState<Product[]>([]);
+  const { products } = useProductsCatalog();
   const [dismissed, setDismissed] = useState(false);
-
-  useEffect(() => {
-    if (!ready || items.length === 0) return;
-    let cancelled = false;
-    fetch("/data/products.json")
-      .then((res) => res.json())
-      .then((data: { products: Product[] }) => {
-        if (!cancelled) setProducts(data.products);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [ready, items.length]);
 
   const drops = useMemo(() => {
     const map = new Map(products.map((p) => [p.product_id, p]));

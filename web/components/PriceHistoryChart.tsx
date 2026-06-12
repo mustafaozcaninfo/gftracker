@@ -20,7 +20,16 @@ export function PriceHistoryChart({ points }: PriceHistoryChartProps) {
 
   return (
     <div className="space-y-3">
-      <div className="flex h-32 items-end gap-1 rounded-xl border border-black/10 bg-neutral-50 p-3">
+      <p className="sr-only">
+        Price history chart from {points[0][0]} to {points[points.length - 1][0]}.
+        Lowest {min.toLocaleString()} QAR, highest {max.toLocaleString()} QAR across{" "}
+        {points.length} recorded points.
+      </p>
+      <div
+        className="flex h-32 items-end gap-1 rounded-xl border border-black/10 bg-neutral-50 p-3"
+        role="img"
+        aria-hidden="true"
+      >
         {points.map(([date, price]) => {
           const height = ((price - min) / range) * 100;
           return (

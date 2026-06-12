@@ -2,8 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import type { Product, SoldProduct } from "@/lib/types";
+import type { ProductDetailData } from "@/lib/data";
 import { formatDate, formatQAR } from "@/lib/format";
 import { productGender } from "@/lib/gender";
 import { buildProductsHref } from "@/lib/product-filters";
@@ -15,72 +14,11 @@ import { PriceSparkline } from "./PriceSparkline";
 import { SimilarProducts } from "./SimilarProducts";
 
 interface ProductDetailProps {
-  productId: string;
+  data: ProductDetailData;
 }
 
-export function ProductDetail({ productId }: ProductDetailProps) {
-  const [product, setProduct] = useState<Product | null>(null);
-  const [sold, setSold] = useState<SoldProduct | null>(null);
-  const [history, setHistory] = useState<Array<[string, number, number]>>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      fetch("/data/products.json").then((r) => r.json()),
-      fetch("/data/price_histories.json").then((r) => r.json()),
-      fetch("/data/sold_products.json").then((r) => r.json()),
-    ])
-      .then(([productsData, historyData, soldData]) => {
-        if (cancelled) return;
-        const found = (productsData.products as Product[]).find(
-          (p) => p.product_id === productId,
-        );
-        if (found) {
-          setProduct(found);
-          setSold(null);
-        } else {
-          const gone = [
-            ...(soldData.sold_recent as SoldProduct[]),
-            ...(soldData.sold_all as SoldProduct[]),
-          ].find((p) => p.product_id === productId);
-          setProduct(null);
-          setSold(gone ?? null);
-        }
-        setHistory(
-          (historyData.histories?.[productId] as Array<[string, number, number]>) ??
-            [],
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [productId]);
-
-  if (loading) {
-    return (
-      <p className="rounded-2xl border border-black/10 bg-white p-12 text-center text-neutral-500">
-        Loading product…
-      </p>
-    );
-  }
-
-  if (!product && !sold) {
-    return (
-      <div className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center">
-        <p className="text-neutral-600">Product not found.</p>
-        <Link
-          href="/products"
-          className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-gl-black px-5 py-2.5 text-sm font-medium text-white"
-        >
-          Back to catalog
-        </Link>
-      </div>
-    );
-  }
+export function ProductDetail({ data }: ProductDetailProps) {
+  const { product, sold, history } = data;
 
   if (sold && !product) {
     return (
@@ -191,7 +129,9 @@ export function ProductDetail({ productId }: ProductDetailProps) {
             <p className="text-sm text-neutral-600">
               <span className="font-medium text-neutral-500">Gender: </span>
               <Link
-                href={buildProductsHref({ gender: productGender(product) as "men" | "women" | "kids" | "unisex" })}
+                href={buildProductsHref({
+                  gender: productGender(product) as "men" | "women" | "kids" | "unisex",
+                })}
                 className="capitalize hover:underline"
               >
                 {productGender(product)}

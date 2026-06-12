@@ -1,6 +1,12 @@
 import { loadMeta, loadSoldProducts } from "@/lib/data";
+import { pageMetadata } from "@/lib/metadata";
 import { PageShell } from "@/components/PageShell";
 import { SoldList } from "@/components/SoldList";
+
+export const metadata = pageMetadata(
+  "Sold / Gone",
+  "Products removed from the offer page — likely sold out or delisted.",
+);
 
 export default async function SoldPage() {
   const [meta, sold] = await Promise.all([loadMeta(), loadSoldProducts()]);

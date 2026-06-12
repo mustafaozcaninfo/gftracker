@@ -1,7 +1,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
+import { resolveProductDetail } from "./product-detail";
 import type {
-  BrandStats,
   DashboardStats,
   PriceChange,
   PriceDrop,
@@ -72,6 +72,73 @@ export async function loadBuySignals(): Promise<Product[]> {
   }
 }
 
+export interface ProductsCatalogData {
+  products: Product[];
+  brands: string[];
+  sizes: string[];
+  size_counts: Record<string, number>;
+  genders: string[];
+  gender_counts: Record<string, number>;
+}
+
+const emptyCatalog: ProductsCatalogData = {
+  products: [],
+  brands: [],
+  sizes: [],
+  size_counts: {},
+  genders: [],
+  gender_counts: {},
+};
+
+export async function loadProductsCatalog(): Promise<ProductsCatalogData> {
+  try {
+    const data = await readJson<
+      Partial<ProductsCatalogData> & { products?: Product[] }
+    >("products.json");
+    return {
+      products: data.products ?? [],
+      brands: data.brands ?? [],
+      sizes: data.sizes ?? [],
+      size_counts: data.size_counts ?? {},
+      genders: data.genders ?? [],
+      gender_counts: data.gender_counts ?? {},
+    };
+  } catch {
+    return emptyCatalog;
+  }
+}
+
+export interface ProductDetailData {
+  product: Product | null;
+  sold: SoldProduct | null;
+  history: Array<[string, number, number]>;
+}
+
+export async function loadProductDetail(productId: string): Promise<ProductDetailData> {
+  const [catalog, soldData] = await Promise.all([
+    loadProductsCatalog(),
+    loadSoldProducts(),
+  ]);
+  const { product, sold } = resolveProductDetail(
+    productId,
+    catalog.products,
+    soldData.sold_recent,
+    soldData.sold_all,
+  );
+
+  let history: Array<[string, number, number]> = [];
+  try {
+    const historyData = await readJson<{
+      histories?: Record<string, Array<[string, number, number]>>;
+    }>("price_histories.json");
+    history = historyData.histories?.[productId] ?? [];
+  } catch {
+    history = [];
+  }
+
+  return { product, sold, history };
+}
+
 export async function loadCatalogCounts(): Promise<{
   sizeCount: number;
   genderCount: number;
@@ -96,17 +163,6 @@ export async function loadBiggestDrops(): Promise<PriceDrop[]> {
     return data.biggest_drops;
   } catch {
     return [];
-  }
-}
-
-export async function loadBrandStats(): Promise<Record<string, BrandStats>> {
-  try {
-    const data = await readJson<{ brands: Record<string, BrandStats> }>(
-      "brand_stats.json",
-    );
-    return data.brands;
-  } catch {
-    return {};
   }
 }
 

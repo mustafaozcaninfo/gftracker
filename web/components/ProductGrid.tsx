@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useProductsCatalog } from "@/lib/catalog-client";
 import type { Product } from "@/lib/types";
 import {
   deriveFilterFacets,
@@ -35,9 +36,8 @@ export function ProductGrid() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { products, loading, error: catalogError } = useProductsCatalog();
+  const error = catalogError;
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const filters = useMemo(
@@ -100,27 +100,6 @@ export function ProductGrid() {
     }, 400);
     return () => window.clearTimeout(handle);
   }, [maxPriceInput, filters.maxprice, updateFilters]);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/data/products.json")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load products");
-        return res.json();
-      })
-      .then((data: { products: Product[] }) => {
-        if (!cancelled) setProducts(data.products);
-      })
-      .catch((err: Error) => {
-        if (!cancelled) setError(err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const facets = useMemo(
     () => deriveFilterFacets(products, filters, deferredQuery),
@@ -203,9 +182,10 @@ export function ProductGrid() {
       <ActiveFilterChips filters={filters} searchQuery={deferredQuery} />
 
       <div className="grid grid-cols-1 gap-4 rounded-2xl border border-black/10 bg-white p-3 sm:gap-3 sm:p-4 md:grid-cols-2 xl:grid-cols-3">
-        <label className="space-y-1.5 text-sm">
+        <label htmlFor="catalog-search" className="space-y-1.5 text-sm">
           <span className="text-neutral-500">Search</span>
           <input
+            id="catalog-search"
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -214,7 +194,7 @@ export function ProductGrid() {
           />
         </label>
 
-        <label className="space-y-1.5 text-sm">
+        <label htmlFor="catalog-brand" className="space-y-1.5 text-sm">
           <span className="text-neutral-500">
             Brand
             {facets.brands.length > 0 && facets.brands.length < products.length && (
@@ -222,6 +202,7 @@ export function ProductGrid() {
             )}
           </span>
           <select
+            id="catalog-brand"
             value={brand}
             onChange={(e) => updateFilters({ brand: e.target.value, size: "all" })}
             className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
@@ -239,7 +220,7 @@ export function ProductGrid() {
         </label>
 
         {facets.genders.length > 0 && (
-          <label className="space-y-1.5 text-sm">
+          <label htmlFor="catalog-gender" className="space-y-1.5 text-sm">
             <span className="text-neutral-500">
               Gender
               {facets.genders.length < 4 && (
@@ -247,6 +228,7 @@ export function ProductGrid() {
               )}
             </span>
             <select
+              id="catalog-gender"
               value={gender}
               onChange={(e) =>
                 updateFilters({
@@ -266,7 +248,7 @@ export function ProductGrid() {
           </label>
         )}
 
-        <label className="space-y-1.5 text-sm">
+        <label htmlFor="catalog-size" className="space-y-1.5 text-sm">
           <span className="text-neutral-500">
             Size
             {facets.sizes.length > 0 && (
@@ -274,6 +256,7 @@ export function ProductGrid() {
             )}
           </span>
           <select
+            id="catalog-size"
             value={size}
             onChange={(e) => updateFilters({ size: e.target.value })}
             className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
@@ -297,9 +280,10 @@ export function ProductGrid() {
           </select>
         </label>
 
-        <label className="space-y-1.5 text-sm">
+        <label htmlFor="catalog-maxprice" className="space-y-1.5 text-sm">
           <span className="text-neutral-500">Max price (QAR)</span>
           <input
+            id="catalog-maxprice"
             type="number"
             min={0}
             step={50}
@@ -310,7 +294,7 @@ export function ProductGrid() {
           />
         </label>
 
-        <label className="space-y-2 text-sm">
+        <label htmlFor="catalog-mindisc" className="space-y-2 text-sm">
           <div className="flex items-center justify-between gap-2">
             <span className="text-neutral-500">Min discount</span>
             <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium tabular-nums">
@@ -318,6 +302,7 @@ export function ProductGrid() {
             </span>
           </div>
           <input
+            id="catalog-mindisc"
             type="range"
             min={0}
             max={70}
@@ -333,9 +318,10 @@ export function ProductGrid() {
           />
         </label>
 
-        <label className="space-y-1.5 text-sm">
+        <label htmlFor="catalog-sort" className="space-y-1.5 text-sm">
           <span className="text-neutral-500">Sort by</span>
           <select
+            id="catalog-sort"
             value={sort}
             onChange={(e) =>
               updateFilters({ sort: e.target.value as SortKey })

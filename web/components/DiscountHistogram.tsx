@@ -35,7 +35,11 @@ export function DiscountHistogram({ stats }: DiscountHistogramProps) {
         </p>
       </div>
 
-      <div className="space-y-2">
+      <p className="sr-only">
+        Discount distribution histogram across {stats.total_products.toLocaleString()}{" "}
+        products.
+      </p>
+      <div className="space-y-2" role="img" aria-hidden="true">
         {BUCKET_ORDER.filter((key) => buckets[key] !== undefined).map((key) => {
           const count = buckets[key] ?? 0;
           const width = Math.max(4, Math.round((count / max) * 100));

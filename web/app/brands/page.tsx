@@ -1,6 +1,12 @@
 import { loadMeta } from "@/lib/data";
+import { pageMetadata } from "@/lib/metadata";
 import { PageShell } from "@/components/PageShell";
 import { BrandsGrid } from "@/components/BrandsGrid";
+
+export const metadata = pageMetadata(
+  "Brands",
+  "Browse offer products grouped by brand with average and max discounts.",
+);
 
 export default async function BrandsPage() {
   const meta = await loadMeta();

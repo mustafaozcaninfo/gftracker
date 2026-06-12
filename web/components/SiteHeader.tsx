@@ -50,7 +50,15 @@ const NAV_GROUPS: NavGroup[] = [
   {
     id: "activity",
     label: "Activity",
-    items: [{ href: "/sold", label: "Sold", countKey: "sold", tone: "gone" }],
+    items: [
+      {
+        href: "/price-changes",
+        label: "Price Changes",
+        countKey: "changes",
+        tone: "drop",
+      },
+      { href: "/sold", label: "Sold", countKey: "sold", tone: "gone" },
+    ],
   },
   {
     id: "yours",
@@ -130,8 +138,13 @@ export function SiteHeader({ stats, counts = {} }: SiteHeaderProps) {
             </Link>
           </h1>
           <p className="text-[11px] text-neutral-500 sm:text-xs">
-            {stats.total_pages
-              ? `${stats.total_products.toLocaleString()} products · ${stats.total_pages} pages`
+            {stats.total_products > 0
+              ? [
+                  `${stats.total_products.toLocaleString()} products`,
+                  stats.total_pages > 0 ? `${stats.total_pages} pages` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
               : "Awaiting first scrape"}
           </p>
         </div>

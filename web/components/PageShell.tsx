@@ -23,7 +23,7 @@ export function PageShell({
     <div className="mx-auto max-w-7xl space-y-6 overflow-x-hidden px-3 py-6 sm:space-y-8 sm:px-6 sm:py-8 lg:px-8">
       <SiteHeader stats={stats} counts={counts} />
       <WatchlistDropBanner />
-      {children}
+      <main id="main-content">{children}</main>
       <SiteFooter source={source} generatedAt={generatedAt} />
     </div>
   );

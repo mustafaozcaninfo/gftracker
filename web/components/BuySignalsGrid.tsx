@@ -1,30 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { Product } from "@/lib/types";
 import { ProductCard } from "./ProductCard";
 
 const PAGE_SIZE = 24;
 
-export function BuySignalsGrid() {
-  const [signals, setSignals] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+export function BuySignalsGrid({ signals }: { signals: Product[] }) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-
-  useEffect(() => {
-    fetch("/data/buy_signals.json")
-      .then((res) => res.json())
-      .then((data: { buy_signals: Product[] }) => setSignals(data.buy_signals))
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
-    return (
-      <p className="rounded-2xl border border-black/10 bg-white p-12 text-center text-neutral-500">
-        Loading buy signals…
-      </p>
-    );
-  }
 
   if (!signals.length) {
     return (

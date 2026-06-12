@@ -58,7 +58,7 @@ def main() -> int:
         if args.update:
             summary = run_update(config_path=args.config, verbose=args.verbose)
             print(json.dumps(summary, indent=2))
-            return 0
+            return 0 if summary.get("scrape_complete") else 2
 
         if args.export_web:
             path = export_dashboard(config_path=args.config)

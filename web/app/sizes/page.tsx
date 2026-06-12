@@ -1,6 +1,12 @@
 import { loadMeta } from "@/lib/data";
+import { pageMetadata } from "@/lib/metadata";
 import { PageShell } from "@/components/PageShell";
 import { SizesHub } from "@/components/SizesHub";
+
+export const metadata = pageMetadata(
+  "Sizes",
+  "Find products by clothing and shoe size on the Qatar offer page.",
+);
 
 export default async function SizesPage() {
   const meta = await loadMeta();

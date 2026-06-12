@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useProductsCatalog } from "@/lib/catalog-client";
 import type { Product } from "@/lib/types";
 import { ProductCard } from "./ProductCard";
 
@@ -19,19 +20,7 @@ function scoreSimilarity(base: Product, candidate: Product): number {
 }
 
 export function SimilarProducts({ product }: SimilarProductsProps) {
-  const [products, setProducts] = useState<Product[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/data/products.json")
-      .then((res) => res.json())
-      .then((data: { products: Product[] }) => {
-        if (!cancelled) setProducts(data.products);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { products } = useProductsCatalog();
 
   const similar = useMemo(
     () =>

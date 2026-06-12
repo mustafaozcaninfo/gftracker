@@ -37,7 +37,7 @@ export function productMatchesFilters(
     const matches =
       product.name.toLowerCase().includes(q) ||
       product.brand.toLowerCase().includes(q) ||
-      product.sku.includes(q);
+      product.sku.toLowerCase().includes(q);
     if (!matches) return false;
   }
   return true;

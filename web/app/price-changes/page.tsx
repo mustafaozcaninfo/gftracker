@@ -1,6 +1,12 @@
 import { loadMeta, loadPriceChanges } from "@/lib/data";
+import { pageMetadata } from "@/lib/metadata";
 import { PageShell } from "@/components/PageShell";
 import { PriceChanges } from "@/components/PriceChanges";
+
+export const metadata = pageMetadata(
+  "Price Changes",
+  "Every logged price or discount move from hourly scrapes.",
+);
 
 export default async function PriceChangesPage() {
   const [meta, changes] = await Promise.all([loadMeta(), loadPriceChanges()]);

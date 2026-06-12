@@ -1,6 +1,5 @@
 import { loadBestDeals, loadBiggestDrops, loadMeta } from "@/lib/data";
-
-const SITE = "https://gftracker.vercel.app";
+import { SITE_URL } from "@/lib/site";
 
 function escapeXml(value: string): string {
   return value
@@ -21,13 +20,13 @@ export async function GET() {
   const items = [
     ...bestDeals.slice(0, 15).map((product) => ({
       title: `${product.brand} — ${product.name} (${product.discount_percent}% off)`,
-      link: `${SITE}/products/${product.product_id}`,
+      link: `${SITE_URL}/products/${product.product_id}`,
       description: `Now QAR ${product.current_price} (was ${product.old_price})`,
       guid: `deal-${product.product_id}`,
     })),
     ...drops.slice(0, 10).map((drop) => ({
       title: `Price drop: ${drop.name} (−QAR ${drop.drop_amount})`,
-      link: `${SITE}/products/${drop.product_id}`,
+      link: `${SITE_URL}/products/${drop.product_id}`,
       description: `${drop.old_current_price} → ${drop.new_current_price} QAR`,
       guid: `drop-${drop.product_id}-${drop.timestamp}`,
     })),
@@ -37,7 +36,7 @@ export async function GET() {
 <rss version="2.0">
   <channel>
     <title>GF Tracker — Galeries Lafayette Qatar Deals</title>
-    <link>${SITE}</link>
+    <link>${SITE_URL}</link>
     <description>Daily best deals and price drops from Galeries Lafayette Qatar offer page.</description>
     <lastBuildDate>${new Date(meta.generated_at).toUTCString()}</lastBuildDate>
     ${items

@@ -1,6 +1,12 @@
 import { loadBestDeals, loadMeta } from "@/lib/data";
+import { pageMetadata } from "@/lib/metadata";
 import { PageShell } from "@/components/PageShell";
 import { ProductCard } from "@/components/ProductCard";
+
+export const metadata = pageMetadata(
+  "Best Deals",
+  "Highest discount percentages on the Galeries Lafayette Qatar offer page.",
+);
 
 export default async function BestDealsPage() {
   const [meta, deals] = await Promise.all([loadMeta(), loadBestDeals()]);

@@ -44,12 +44,15 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python daily_tracker.py
-        continue-on-error: true
 
-      - name: Scrape status
-        if: steps.scrape.outcome == 'failure'
+      - name: Notify scrape failure
+        if: failure() && steps.scrape.outcome == 'failure'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          echo "::warning::Scrape had page failures or errors; continuing with cached/exported data for deploy."
+          python -c "from notify import notify_scrape_failure; notify_scrape_failure('GitHub Actions hourly scrape job failed — see workflow logs.')"
 
       - name: Save data cache
         if: always()
@@ -65,14 +68,17 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - name: Install web deps
+        if: success()
         working-directory: web
         run: npm ci
 
       - name: Build web
+        if: success()
         working-directory: web
         run: npm run build
 
       - name: Deploy to Vercel
+        if: success()
         working-directory: web
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

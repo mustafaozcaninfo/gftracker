@@ -108,12 +108,16 @@ def run_update(config_path: str | Path = "config.yaml", verbose: bool = False) -
         raise
 
     products = all_products
+    scrape_complete = (
+        pages_failed == 0 and total_pages > 0 and pages_ok >= total_pages
+    )
     scrape_meta = {
         "total_pages": total_pages,
         "pages_scraped": pages_ok,
         "pages_failed": pages_failed,
         "products_found": len(all_products),
         "catalog_diff": catalog_diff,
+        "scrape_complete": scrape_complete,
     }
     from models import ScrapeStats
 
@@ -137,22 +141,33 @@ def run_update(config_path: str | Path = "config.yaml", verbose: bool = False) -
             change.new_discount_percent,
         )
 
-    web_path = export_dashboard(
-        config_path=config_path,
-        scrape_meta=scrape_meta,
-    )
+    web_path: Path | None = None
+    if scrape_complete:
+        web_path = export_dashboard(
+            config_path=config_path,
+            scrape_meta=scrape_meta,
+        )
+    else:
+        logger.warning(
+            "Skipping web export — incomplete scrape "
+            "(pages_ok=%s, total_pages=%s, pages_failed=%s)",
+            pages_ok,
+            total_pages,
+            pages_failed,
+        )
 
     summary = {
         "products_found": scrape_meta["products_found"],
         "pages_scraped": scrape_meta["pages_scraped"],
         "pages_failed": scrape_meta["pages_failed"],
         "total_pages": scrape_meta["total_pages"],
+        "scrape_complete": scrape_complete,
         "new_products": db_stats.new_products,
         "price_changes": db_stats.price_changes,
         "buy_signals": len(store.get_buy_signals()),
         "scrape_run_id": run_id,
         "snapshot_path": str(snapshot_path),
-        "web_dashboard_path": str(web_path),
+        "web_dashboard_path": str(web_path) if web_path else None,
         "db_path": config["output"]["db_path"],
     }
 
@@ -190,10 +205,17 @@ def print_report(report: dict[str, Any]) -> None:
         print("No products scraped today yet. Run with --update first.")
     else:
         for idx, deal in enumerate(report["best_deals"], start=1):
+            current = deal.get("current_price")
+            old = deal.get("old_price")
+            price_line = (
+                f"    QAR {current:.2f} (was {old:.2f})\n"
+                if current is not None and old is not None
+                else "    Price unavailable\n"
+            )
             print(
-                f"{idx:>2}. [{deal['discount_percent']}% OFF] "
+                f"{idx:>2}. [{deal.get('discount_percent', 0)}% OFF] "
                 f"{deal['brand']} - {deal['name']}\n"
-                f"    QAR {deal['current_price']:.2f} (was {deal['old_price']:.2f})\n"
+                f"{price_line}"
                 f"    SKU: {deal['sku']} | Page: {deal['page']}\n"
                 f"    {deal['url']}\n"
             )
@@ -203,13 +225,15 @@ def print_report(report: dict[str, Any]) -> None:
         print("No buy signals yet — need multiple days of tracking.")
     else:
         for deal in report["buy_signals"][:15]:
-            lowest = deal.get("lowest_price", deal["current_price"])
+            current = deal.get("current_price")
+            lowest = deal.get("lowest_price", current)
             lowest_date = deal.get("lowest_date", "?")
             flag = "BUY NOW" if deal.get("is_at_lowest") else "NEAR LOW"
+            now_line = f"QAR {current:.2f}" if current is not None else "n/a"
+            low_line = f"QAR {lowest:.2f}" if lowest is not None else "n/a"
             print(
                 f"[{flag}] {deal['brand']} - {deal['name']}\n"
-                f"    Now: QAR {deal['current_price']:.2f} | "
-                f"Lowest: QAR {lowest:.2f} on {lowest_date}\n"
+                f"    Now: {now_line} | Lowest: {low_line} on {lowest_date}\n"
             )
 
     print("\n=== Today's Price Changes ===\n")

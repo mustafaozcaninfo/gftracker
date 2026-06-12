@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useProductsCatalog } from "@/lib/catalog-client";
 import { buildProductsHref } from "@/lib/product-filters";
 import { SIZE_FILTER_MULTI, SIZE_FILTER_ONE } from "@/lib/sizes";
 
@@ -22,24 +23,8 @@ const POPULAR = [
 ];
 
 export function SizesHub() {
-  const [sizeCounts, setSizeCounts] = useState<Record<string, number>>({});
+  const { sizeCounts, loading } = useProductsCatalog();
   const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/data/products.json")
-      .then((res) => res.json())
-      .then((data: { size_counts?: Record<string, number>; sizes?: string[] }) => {
-        if (data.size_counts) {
-          setSizeCounts(data.size_counts);
-        } else if (data.sizes) {
-          const counts: Record<string, number> = {};
-          for (const size of data.sizes) counts[size] = 1;
-          setSizeCounts(counts);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, []);
 
   const entries = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -99,13 +84,17 @@ export function SizesHub() {
         </section>
       )}
 
-      <input
-        type="search"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search all sizes…"
-        className="min-h-11 w-full max-w-md rounded-xl border border-black/10 px-3 py-2.5 text-sm outline-none ring-gl-gold focus:ring-2"
-      />
+      <label htmlFor="sizes-search" className="block max-w-md text-sm">
+        <span className="sr-only">Search sizes</span>
+        <input
+          id="sizes-search"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search all sizes…"
+          className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-sm outline-none ring-gl-gold focus:ring-2"
+        />
+      </label>
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {entries.map(([size, count]) => (

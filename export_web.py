@@ -14,6 +14,26 @@ from models import ProductStore
 SCRAPE_HISTORY_EXPORT_LIMIT = 48
 SCRAPE_HISTORY_BACKUP_LIMIT = 96
 
+REQUIRED_EXPORT_FILES = (
+    "meta.json",
+    "products.json",
+    "buy_signals.json",
+    "sold_products.json",
+    "price_changes.json",
+    "best_deals.json",
+    "biggest_drops.json",
+    "brand_stats.json",
+)
+
+REQUIRED_META_STATS = (
+    "total_products",
+    "total_pages",
+    "drops_today",
+    "sold_total",
+    "sold_recent_48h",
+    "buy_signals_count",
+)
+
 
 def _runs_to_index(runs: list[Any]) -> dict[int, dict[str, Any]]:
     return {
@@ -117,9 +137,44 @@ def build_dashboard_payload(
     }
 
 
+def validate_export(out_dir: str | Path) -> None:
+    """Ensure committed web JSON matches what the dashboard expects."""
+    root = Path(out_dir)
+    missing_files = [name for name in REQUIRED_EXPORT_FILES if not (root / name).exists()]
+    if missing_files:
+        raise ValueError(f"Export validation failed: missing files: {missing_files}")
+
+    try:
+        meta = json.loads((root / "meta.json").read_text(encoding="utf-8"))
+        products_payload = json.loads((root / "products.json").read_text(encoding="utf-8"))
+        buy_payload = json.loads((root / "buy_signals.json").read_text(encoding="utf-8"))
+        sold_payload = json.loads((root / "sold_products.json").read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        raise ValueError(f"Export validation failed: unreadable JSON in {root}") from exc
+
+    stats = meta.get("stats") or {}
+    missing_stats = [key for key in REQUIRED_META_STATS if key not in stats]
+    if missing_stats:
+        raise ValueError(f"Export validation failed: meta.stats missing {missing_stats}")
+
+    if "size_counts" not in products_payload:
+        raise ValueError("Export validation failed: products.json missing size_counts")
+
+    product_count = len(products_payload.get("products") or [])
+    buy_count = len(buy_payload.get("buy_signals") or [])
+    if buy_count > product_count:
+        raise ValueError(
+            "Export validation failed: buy_signals count exceeds products "
+            f"({buy_count} > {product_count})"
+        )
+
+    if "sold_all" not in sold_payload or "sold_recent" not in sold_payload:
+        raise ValueError("Export validation failed: sold_products.json missing sold lists")
+
+
 def export_dashboard(
     config_path: str | Path = "config.yaml",
-    output_path: str | Path = "web/public/data/dashboard.json",
+    output_dir: str | Path = "web/public/data",
     scrape_meta: dict[str, Any] | None = None,
 ) -> Path:
     with Path(config_path).open(encoding="utf-8") as handle:
@@ -129,7 +184,7 @@ def export_dashboard(
     data_dir = Path(config["output"]["db_path"]).parent
     payload = build_dashboard_payload(store, scrape_meta=scrape_meta, data_dir=data_dir)
 
-    out_dir = Path(output_path).parent
+    out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Split files — each page loads only what it needs (no 5MB freeze)
@@ -235,11 +290,29 @@ def export_dashboard(
         encoding="utf-8",
     )
 
-    out = Path(output_path)
-    out.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-    return out
+    validate_export(out_dir)
+    return out_dir / "meta.json"
+
+
+def scrape_meta_from_last_run(config_path: str | Path = "config.yaml") -> dict[str, Any] | None:
+    """Seed export stats from the latest scrape run when not invoked after a live scrape."""
+    with Path(config_path).open(encoding="utf-8") as handle:
+        config = yaml.safe_load(handle) or {}
+    runs = ProductStore(config["output"]["db_path"]).get_scrape_history(limit=1)
+    if not runs:
+        return None
+    run = runs[0]
+    total_pages = int(run.get("total_pages") or 0)
+    pages_scraped = int(run.get("pages_scraped") or 0)
+    pages_failed = max(0, total_pages - pages_scraped) if total_pages else 0
+    return {
+        "total_pages": total_pages,
+        "pages_scraped": pages_scraped,
+        "pages_failed": pages_failed,
+        "scrape_complete": run.get("status") == "completed" and pages_failed == 0,
+    }
 
 
 if __name__ == "__main__":
-    path = export_dashboard()
+    path = export_dashboard(scrape_meta=scrape_meta_from_last_run())
     print(f"Exported dashboard data to {path}")

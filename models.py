@@ -5,7 +5,8 @@ Architecture
 products        Master catalog (one row per product_id)
 scrape_runs     Each hourly session; completed runs store catalog_snapshot JSON
 daily_prices    One price row per product per calendar day (UPSERT on same-day refresh)
-price_changes   Log when price moves between days
+price_changes   One row per product per Qatar calendar day; updated on each intraday move
+                (old = previous price in the chain, new = latest seen that day)
 
 Sold/gone: compare previous completed catalog_snapshot vs current full scrape;
 only IDs in previous-but-not-current are marked inactive.
@@ -156,6 +157,8 @@ class ProductStore:
                     ON daily_prices(product_id, price_date);
                 CREATE INDEX IF NOT EXISTS idx_price_changes_date
                     ON price_changes(price_date);
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_price_changes_product_date
+                    ON price_changes(product_id, price_date);
                 CREATE INDEX IF NOT EXISTS idx_scrape_runs_date
                     ON scrape_runs(run_date);
                 """
@@ -367,6 +370,11 @@ class ProductStore:
     def _yesterday() -> str:
         return (datetime.now(QATAR_TZ) - timedelta(days=1)).strftime("%Y-%m-%d")
 
+    @staticmethod
+    def _hours_ago_qatar(hours: int) -> str:
+        """ISO timestamp cutoff for sold/recent filters (Asia/Qatar, not UTC)."""
+        return (datetime.now(QATAR_TZ) - timedelta(hours=hours)).isoformat(timespec="seconds")
+
     def checkpoint_wal(self) -> None:
         """Flush WAL into the main DB file before CI cache upload."""
         with self._connect() as conn:
@@ -559,6 +567,12 @@ class ProductStore:
         products: list[Product],
         scrape_run_id: int,
     ) -> tuple[list[PriceChange], ScrapeStats]:
+        """Record products and prices for the current Qatar calendar day.
+
+        Price changes are intraday: each hourly scrape may update the same
+        product's row for today. ``daily_prices`` keeps the latest price;
+        ``price_changes`` keeps one row per product per day (latest transition).
+        """
         stats = ScrapeStats(products_found=len(products), scrape_run_id=scrape_run_id)
         changes: list[PriceChange] = []
         today = self._today()
@@ -687,26 +701,57 @@ class ProductStore:
                         )
                         changes.append(change)
                         stats.price_changes += 1
-                        conn.execute(
+                        existing_change = conn.execute(
                             """
-                            INSERT INTO price_changes (
-                                product_id, sku, name, old_current_price,
-                                new_current_price, old_discount_percent,
-                                new_discount_percent, price_date, timestamp
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            SELECT 1 FROM price_changes
+                            WHERE product_id = ? AND price_date = ?
                             """,
-                            (
-                                change.product_id,
-                                change.sku,
-                                change.name,
-                                change.old_current_price,
-                                change.new_current_price,
-                                change.old_discount_percent,
-                                change.new_discount_percent,
-                                change.price_date,
-                                change.timestamp,
-                            ),
-                        )
+                            (product.product_id, today),
+                        ).fetchone()
+                        if existing_change:
+                            conn.execute(
+                                """
+                                UPDATE price_changes SET
+                                    old_current_price = new_current_price,
+                                    old_discount_percent = new_discount_percent,
+                                    new_current_price = ?,
+                                    new_discount_percent = ?,
+                                    sku = ?,
+                                    name = ?,
+                                    timestamp = ?
+                                WHERE product_id = ? AND price_date = ?
+                                """,
+                                (
+                                    change.new_current_price,
+                                    change.new_discount_percent,
+                                    change.sku,
+                                    change.name,
+                                    change.timestamp,
+                                    product.product_id,
+                                    today,
+                                ),
+                            )
+                        else:
+                            conn.execute(
+                                """
+                                INSERT INTO price_changes (
+                                    product_id, sku, name, old_current_price,
+                                    new_current_price, old_discount_percent,
+                                    new_discount_percent, price_date, timestamp
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                """,
+                                (
+                                    change.product_id,
+                                    change.sku,
+                                    change.name,
+                                    change.old_current_price,
+                                    change.new_current_price,
+                                    change.old_discount_percent,
+                                    change.new_discount_percent,
+                                    change.price_date,
+                                    change.timestamp,
+                                ),
+                            )
 
         return changes, stats
 
@@ -874,6 +919,7 @@ class ProductStore:
         )[:top_n]
 
     def get_today_price_changes(self) -> list[dict[str, Any]]:
+        """Price moves for the current Qatar day (one row per product)."""
         today = self._today()
         with self._connect() as conn:
             rows = conn.execute(
@@ -974,8 +1020,8 @@ class ProductStore:
         """
         params: list[Any] = []
         if recent_hours is not None:
-            query += " AND datetime(COALESCE(p.removed_at, p.last_seen_at)) >= datetime('now', ?)"
-            params.append(f"-{recent_hours} hours")
+            query += " AND datetime(COALESCE(p.removed_at, p.last_seen_at)) >= datetime(?)"
+            params.append(self._hours_ago_qatar(recent_hours))
         query += " ORDER BY COALESCE(p.removed_at, p.last_seen_at) DESC LIMIT ?"
         params.append(limit)
 
@@ -999,8 +1045,8 @@ class ProductStore:
         query = "SELECT COUNT(*) AS c FROM products WHERE is_active = 0"
         params: list[Any] = []
         if recent_hours is not None:
-            query += " AND datetime(COALESCE(removed_at, last_seen_at)) >= datetime('now', ?)"
-            params.append(f"-{recent_hours} hours")
+            query += " AND datetime(COALESCE(removed_at, last_seen_at)) >= datetime(?)"
+            params.append(self._hours_ago_qatar(recent_hours))
         with self._connect() as conn:
             row = conn.execute(query, params).fetchone()
         return int(row["c"]) if row else 0
@@ -1071,13 +1117,3 @@ class ProductStore:
             ).fetchall()
         return [dict(row) for row in rows]
 
-    # Backward-compatible alias used by main.py
-    def upsert_products(self, products: list[Product]) -> tuple[list[PriceChange], ScrapeStats]:
-        run_id = self.start_scrape_run()
-        changes, stats = self.record_daily_scrape(products, run_id)
-        self.complete_scrape_run(
-            run_id,
-            pages_scraped=stats.pages_scraped,
-            products_found=stats.products_found,
-        )
-        return changes, stats

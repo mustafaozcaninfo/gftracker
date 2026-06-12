@@ -1,7 +1,13 @@
 import { Suspense } from "react";
 import { loadMeta, loadPriceChanges } from "@/lib/data";
+import { pageMetadata } from "@/lib/metadata";
 import { PageShell } from "@/components/PageShell";
 import { MyListTabs } from "@/components/MyListTabs";
+
+export const metadata = pageMetadata(
+  "My List",
+  "Liked products and price changes tracked on this device.",
+);
 
 function MyListFallback() {
   return (
@@ -19,7 +25,6 @@ export default async function MyListPage() {
       stats={meta.stats}
       source={meta.source}
       generatedAt={meta.generated_at}
-      counts={{ changes: changes.length }}
     >
       <Suspense fallback={<MyListFallback />}>
         <MyListTabs changes={changes} />

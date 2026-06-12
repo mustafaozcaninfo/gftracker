@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
-PAT_URL="https://github.com/settings/personal-access-tokens/new?name=GFTracker+Cloudflare+Cron&description=Hourly+repository_dispatch+for+gftracker&target_name=mustafaozcaninfo&expires_in=365&actions=write&metadata=read"
+PAT_URL="https://github.com/settings/personal-access-tokens/new?name=GFTracker+Cloudflare+Cron&description=Hourly+workflow_dispatch+for+gftracker&target_name=mustafaozcaninfo&expires_in=365&actions=write&metadata=read"
 
 echo "GitHub fine-grained PAT formu aciliyor..."
 echo "1) Repository access: Only select repositories -> gftracker"
@@ -34,13 +34,14 @@ fi
 
 echo "$GITHUB_PAT" | npx wrangler secret put GITHUB_PAT
 
-echo "Test ediliyor..."
+echo "Test ediliyor (workflow_dispatch → daily-tracker.yml)..."
 curl -fsS -X POST \
   -H "Authorization: Bearer $GITHUB_PAT" \
   -H "Accept: application/vnd.github+json" \
   -H "X-GitHub-Api-Version: 2022-11-28" \
-  https://api.github.com/repos/mustafaozcaninfo/gftracker/dispatches \
-  -d '{"event_type":"hourly-scrape","client_payload":{"source":"pat-setup-test"}}' \
+  -H "Content-Type: application/json" \
+  https://api.github.com/repos/mustafaozcaninfo/gftracker/actions/workflows/daily-tracker.yml/dispatches \
+  -d '{"ref":"main"}' \
   >/dev/null
 
-echo "Tamam — GITHUB_PAT Cloudflare Worker'a kaydedildi ve dispatch testi gecti."
+echo "Tamam — GITHUB_PAT Cloudflare Worker'a kaydedildi ve workflow dispatch testi gecti."

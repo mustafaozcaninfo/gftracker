@@ -430,7 +430,6 @@ class OfferScraper:
             old_price = self._parse_price_amount(old_price_el)
 
             if current_price is None or old_price is None:
-                match_current = PRICE_AMOUNT_PATTERN.search(str(item))
                 amounts = PRICE_AMOUNT_PATTERN.findall(str(item))
                 if current_price is None and amounts:
                     current_price = float(amounts[0])
@@ -505,23 +504,3 @@ class OfferScraper:
             page_products = self.parse_products(html, page=page)
             logger.info("Page %s: found %s products", page, len(page_products))
             yield page, page_products, total_pages
-
-    def scrape_all(self) -> tuple[list[Product], dict[str, Any]]:
-        all_products: list[Product] = []
-        pages_failed = 0
-        total_pages = 0
-
-        for page, page_products, total in self.iter_pages():
-            total_pages = total
-            if page_products:
-                all_products.extend(page_products)
-            else:
-                pages_failed += 1
-
-        meta = {
-            "total_pages": total_pages,
-            "pages_scraped": total_pages - pages_failed,
-            "pages_failed": pages_failed,
-            "products_found": len(all_products),
-        }
-        return all_products, meta

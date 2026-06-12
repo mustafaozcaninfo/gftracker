@@ -12,6 +12,7 @@ if str(ROOT) not in sys.path:
 
 import yaml
 
+from export_web import export_dashboard
 from gender import infer_gender
 from models import ProductStore
 
@@ -32,6 +33,9 @@ def main() -> int:
                     (gender, row["product_id"]),
                 )
                 updated += 1
+    if updated:
+        path = export_dashboard(config_path=ROOT / "config.yaml")
+        print(f"Exported web data to {path}")
     print(f"Updated gender for {updated} products")
     return 0
 

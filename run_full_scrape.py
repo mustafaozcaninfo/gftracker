@@ -35,94 +35,115 @@ def scrape_and_save(config: dict, export_every: int = 20) -> dict:
 
     run_id = store.start_scrape_run(total_pages=0)
 
-    for page, page_products, total in scraper.iter_pages():
-        total_pages = total
-        if not page_products:
-            pages_failed += 1
-            continue
+    try:
+        for page, page_products, total in scraper.iter_pages():
+            total_pages = total
+            if not page_products:
+                pages_failed += 1
+                continue
 
-        pages_ok += 1
-        all_products.extend(page_products)
-        all_ids.extend(p.product_id for p in page_products)
+            pages_ok += 1
+            all_products.extend(page_products)
+            all_ids.extend(p.product_id for p in page_products)
 
-        changes, stats = store.record_daily_scrape(page_products, run_id)
-        total_changes += stats.price_changes
-        total_new += stats.new_products
+            changes, stats = store.record_daily_scrape(page_products, run_id)
+            total_changes += stats.price_changes
+            total_new += stats.new_products
 
-        store.update_scrape_run_progress(
+            store.update_scrape_run_progress(
+                run_id,
+                pages_scraped=pages_ok,
+                products_found=len(all_products),
+            )
+
+            if page == 1:
+                with store._connect() as conn:
+                    conn.execute(
+                        "UPDATE scrape_runs SET total_pages = ? WHERE id = ?",
+                        (total_pages, run_id),
+                    )
+
+            if page % export_every == 0 or page == total_pages:
+                export_dashboard(
+                    config_path=ROOT / "config.yaml",
+                    scrape_meta={
+                        "total_pages": total_pages,
+                        "pages_scraped": pages_ok,
+                        "pages_failed": pages_failed,
+                        "products_found": len(all_products),
+                    },
+                )
+                logger.info(
+                    "Checkpoint page %s/%s — %s products in DB",
+                    page,
+                    total_pages,
+                    len(all_products),
+                )
+
+        scrape_complete = (
+            pages_failed == 0 and total_pages > 0 and pages_ok >= total_pages
+        )
+        if scrape_complete:
+            diff = store.finalize_scrape_catalog(
+                list(dict.fromkeys(all_ids)),
+                run_id=run_id,
+            )
+            logger.info(
+                "Catalog diff (%s): %s removed, %s added",
+                diff.get("baseline"),
+                diff.get("removed"),
+                diff.get("added"),
+            )
+        else:
+            logger.warning(
+                "Skipping catalog diff: pages_ok=%s total_pages=%s pages_failed=%s",
+                pages_ok,
+                total_pages,
+                pages_failed,
+            )
+
+        store.complete_scrape_run(
             run_id,
             pages_scraped=pages_ok,
             products_found=len(all_products),
+            status="completed" if pages_failed == 0 else "partial",
         )
+        store.save_daily_snapshot(all_products, config["output"]["snapshot_dir"])
 
-        if page == 1:
-            with store._connect() as conn:
-                conn.execute(
-                    "UPDATE scrape_runs SET total_pages = ? WHERE id = ?",
-                    (total_pages, run_id),
-                )
-
-        if page % export_every == 0 or page == total_pages:
-            export_dashboard(
+        web_path = None
+        if scrape_complete:
+            web_path = export_dashboard(
                 config_path=ROOT / "config.yaml",
                 scrape_meta={
                     "total_pages": total_pages,
                     "pages_scraped": pages_ok,
+                    "pages_failed": pages_failed,
                     "products_found": len(all_products),
+                    "scrape_complete": True,
                 },
             )
-            logger.info(
-                "Checkpoint page %s/%s — %s products in DB",
-                page,
-                total_pages,
-                len(all_products),
-            )
+        else:
+            logger.warning("Skipping final web export — incomplete scrape")
 
-    if pages_failed == 0 and total_pages > 0 and pages_ok >= total_pages:
-        diff = store.finalize_scrape_catalog(
-            list(dict.fromkeys(all_ids)),
-            run_id=run_id,
-        )
-        logger.info(
-            "Catalog diff (%s): %s removed, %s added",
-            diff.get("baseline"),
-            diff.get("removed"),
-            diff.get("added"),
-        )
-    else:
-        logger.warning(
-            "Skipping catalog diff: pages_ok=%s total_pages=%s pages_failed=%s",
-            pages_ok,
-            total_pages,
-            pages_failed,
-        )
-
-    store.complete_scrape_run(
-        run_id,
-        pages_scraped=pages_ok,
-        products_found=len(all_products),
-        status="completed" if pages_failed == 0 else "partial",
-    )
-    store.save_daily_snapshot(all_products, config["output"]["snapshot_dir"])
-    web_path = export_dashboard(
-        config_path=ROOT / "config.yaml",
-        scrape_meta={
+        return {
             "total_pages": total_pages,
             "pages_scraped": pages_ok,
+            "pages_failed": pages_failed,
+            "scrape_complete": scrape_complete,
             "products_found": len(all_products),
-        },
-    )
-
-    return {
-        "total_pages": total_pages,
-        "pages_scraped": pages_ok,
-        "pages_failed": pages_failed,
-        "products_found": len(all_products),
-        "new_products": total_new,
-        "price_changes": total_changes,
-        "scrape_run_id": run_id,
-        "web_dashboard_path": str(web_path),
-    }
+            "new_products": total_new,
+            "price_changes": total_changes,
+            "scrape_run_id": run_id,
+            "web_dashboard_path": str(web_path) if web_path else None,
+        }
+    except Exception:
+        store.complete_scrape_run(
+            run_id,
+            pages_scraped=pages_ok,
+            products_found=len(all_products),
+            status="failed",
+        )
+        raise
 
 
 def main() -> int:
@@ -135,7 +156,12 @@ def main() -> int:
     config["max_pages"] = 0
 
     started = time.time()
-    summary = scrape_and_save(config)
+    try:
+        summary = scrape_and_save(config)
+    except Exception as exc:
+        logger.exception("Full scrape failed")
+        print(f"\nFAILED: {exc}\n", file=sys.stderr)
+        return 1
     elapsed = round(time.time() - started, 1)
 
     print(
@@ -145,7 +171,7 @@ def main() -> int:
         f"  New: {summary['new_products']}\n"
         f"  Web: {summary['web_dashboard_path']}\n"
     )
-    return 0 if summary["pages_failed"] == 0 else 1
+    return 0 if summary.get("scrape_complete") else 1
 
 
 if __name__ == "__main__":

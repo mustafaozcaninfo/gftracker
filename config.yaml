@@ -23,7 +23,6 @@ scraper:
   max_retries: 5
   retry_backoff: 2.0
   timeout: 30
-  use_playwright: false
 
 proxies: []
 # Example:

@@ -1,19 +1,21 @@
 # GFTracker — Sistem Dokümantasyonu
 
-Galeries Lafayette Qatar (`galerieslafayette.qa/offer.html`) indirimli ürünlerini günlük olarak tarayan, fiyat geçmişini SQLite'ta saklayan ve Next.js dashboard üzerinden sunan bir fiyat takip sistemidir.
+Galeries Lafayette Qatar (`galerieslafayette.qa/offer.html`) indirimli ürünlerini **saatlik** tarayan, fiyat geçmişini SQLite'ta saklayan ve Next.js dashboard üzerinden sunan bir fiyat takip sistemidir.
 
 **Canlı site:** https://gftracker.vercel.app  
-**Kaynak kod:** https://github.com/mustafaozcaninfo/gftracker
+**Kaynak kod:** https://github.com/mustafaozcaninfo/gftracker  
+**Kısa başlangıç:** [README.md](./README.md)
 
 ---
 
 ## Ne yapar?
 
-1. **Scrape** — Offer sayfasının tüm sayfalarını (~152 sayfa, ~4800+ ürün) tarar.
-2. **Kayıt** — Her ürünün günlük fiyatını veritabanına yazar; günler arası değişimleri loglar.
-3. **Analiz** — En iyi indirimleri, fiyat değişimlerini ve “alım sinyali” (tarihsel dip fiyata yakın ürünleri) hesaplar.
-4. **Dashboard** — Sonuçları mobil uyumlu bir web arayüzünde gösterir.
-5. **Otomasyon** — GitHub Actions her gün scrape + deploy çalıştırır.
+1. **Scrape** — Offer sayfasının tüm sayfalarını (~152 sayfa, ~4800 ürün) tarar.
+2. **Kayıt** — Qatar takvim günü başına fiyat (UPSERT); intraday fiyat hareketlerini loglar.
+3. **Sold/gone** — Tam scrape sonrası önceki katalog snapshot'ı ile diff; kayıp ürünleri `is_active=0`.
+4. **Analiz** — En iyi indirimler, fiyat düşüşleri, buy signal (tarihsel dip ±%2).
+5. **Dashboard** — Parçalı JSON + Next.js 15 (mobil uyumlu).
+6. **Otomasyon** — Cloudflare Worker (saatlik) → GitHub Actions → scrape + deploy.
 
 ---
 
@@ -21,22 +23,28 @@ Galeries Lafayette Qatar (`galerieslafayette.qa/offer.html`) indirimli ürünler
 
 ```mermaid
 flowchart LR
+    subgraph trigger [Tetikleyici]
+        CF[Cloudflare Worker cron :15]
+    end
+
     subgraph kaynak [Kaynak]
         GL[galerieslafayette.qa/offer.html]
     end
 
-    subgraph python [Python Backend]
+    subgraph python [Python]
         S[scraper.py]
         M[models.py / SQLite]
         E[export_web.py]
+        N[notify.py]
     end
 
     subgraph veri [Veri]
         DB[(products_history.db)]
+        CACHE[GHA cache data/]
         JSON[web/public/data/*.json]
     end
 
-    subgraph web [Next.js Dashboard]
+    subgraph web [Next.js]
         UI[Vercel — gftracker.vercel.app]
     end
 
@@ -45,15 +53,13 @@ flowchart LR
         VD[vercel deploy --prod]
     end
 
-    GL --> S
-    S --> M
-    M --> DB
-    M --> E
-    E --> JSON
+    CF -->|workflow_dispatch| DT
+    GL --> S --> M --> DB
+    CACHE --> DB
+    M --> E --> JSON
+    DT --> N
     JSON --> UI
-    DT --> S
-    DT --> E
-    VD --> UI
+    DT --> VD --> UI
 ```
 
 ---
@@ -62,194 +68,157 @@ flowchart LR
 
 ```
 GFTracker/
-├── config.yaml              # Scraper ve çıktı ayarları
-├── scraper.py               # HTTP scrape + HTML/JSON parse
-├── models.py                # SQLite şeması ve iş mantığı
-├── main.py                  # Scrape orkestrasyonu
-├── export_web.py            # Dashboard JSON export
-├── tracker.py               # CLI (update / report / export-web)
-├── daily_tracker.py         # Cron + GitHub Actions giriş noktası
-├── backfill_images.py       # Sadece ürün görsellerini günceller
-├── run_full_scrape.py       # Tam scrape + ara checkpoint export
-├── requirements.txt
-├── data/
-│   ├── products_history.db  # SQLite (gitignore — local/CI'da oluşur)
-│   └── daily_snapshot_*.json
-├── web/                     # Next.js 15 dashboard
-│   ├── app/                 # Sayfa rotaları
-│   ├── components/          # UI bileşenleri
-│   └── public/data/         # Export edilen JSON dosyaları
-├── .github/workflows/
-│   └── daily-tracker.yml    # Günlük scrape + Vercel deploy
-└── vercel.json              # Monorepo Vercel yapılandırması
+├── config.yaml
+├── scraper.py, models.py, main.py, export_web.py
+├── daily_tracker.py          # CI entry (scrape → validate → notify)
+├── tracker.py                # CLI (--update / --report / --export-web)
+├── run_full_scrape.py        # Checkpoint'li tam scrape
+├── notify.py
+├── tests/                    # Python unit tests
+├── data/                     # SQLite + snapshots (DB gitignore)
+├── web/                      # Next.js 15 dashboard
+│   ├── app/                  # App Router sayfaları
+│   ├── components/
+│   ├── lib/
+│   └── public/data/          # Export JSON
+├── workers/github-cron/      # Cloudflare → GitHub dispatch
+└── .github/workflows/
+    ├── daily-tracker.yml     # Saatlik scrape + deploy
+    └── ci.yml                # PR: test + build
 ```
 
 ---
 
-## Scraper nasıl çalışır?
+## Scraper
 
 **Hedef:** `https://www.galerieslafayette.qa/offer.html`
 
-| Sayfa | İstek tipi | İçerik |
-|-------|-----------|--------|
-| Sayfa 1 | Tam HTML | Ürün listesi + toplam sayfa sayısı (`k-page-count`) |
-| Sayfa 2+ | `is_scroll=1` ile AJAX | JSON içinde `categoryProducts` |
+| Sayfa | İstek | İçerik |
+|-------|-------|--------|
+| 1 | Tam HTML | Ürün listesi + `k-page-count` |
+| 2+ | `is_scroll=1` AJAX | JSON `categoryProducts` |
 
-**`scraper.py` özellikleri:**
-- Rastgele `User-Agent`, gecikme ve retry (stealth / normal / turbo modları)
-- Sayfa başına ~32 ürün parse eder (isim, marka, fiyat, indirim %, SKU, URL, görsel)
-- `config.yaml` → `speed: turbo` ile ~152 sayfa birkaç dakikada tamamlanır
-
-**Incremental kayıt:** Her sayfa scrape edildikten hemen sonra veritabanına yazılır. Scrape yarıda kesilse bile o ana kadar toplanan ürünler kaybolmaz.
+- `scraper.py`: User-Agent rotasyonu, retry, `stealth | normal | turbo`
+- Bedenler: Magento `jsonConfig` — yalnızca stokta olan child SKU'lar
+- Her sayfa sonrası DB'ye incremental yazım (`record_daily_scrape`)
 
 ---
 
 ## Veritabanı (SQLite v2)
 
-Dosya: `data/products_history.db` (git'e **dahil değil**)
+Dosya: `data/products_history.db` (git'e dahil değil; GHA **cache** ile run'lar arası korunur)
 
 | Tablo | Açıklama |
 |-------|----------|
-| `products` | Ürün kataloğu (product_id, marka, URL, ilk/son görülme) |
-| `daily_prices` | Ürün başına gün başına bir fiyat satırı (aynı gün tekrar scrape → UPSERT) |
-| `price_changes` | Günler arası fiyat/indirim değişim logu |
-| `scrape_runs` | Her scrape oturumunun durumu (running / completed / failed) |
+| `products` | Katalog; `is_active`, `removed_at`, sizes, gender |
+| `daily_prices` | Ürün × Qatar günü (UPSERT aynı gün) |
+| `price_changes` | Ürün × gün tek satır; intraday güncellenir |
+| `scrape_runs` | Oturum + `catalog_snapshot` JSON (tam scrape) |
 
-### Buy Signal (alım sinyali)
+### Sold / gone
 
-Bir ürün şu koşullarda “buy signal” sayılır:
-- Tarihsel **en düşük fiyatta** (`is_at_lowest`), veya
-- En düşük fiyata **%2 veya daha az** yakınsa (`pct_above_lowest ≤ 2`)
+Tam scrape (`scrape_complete`) sonrası:
 
-Bu mantık birden fazla gün veri biriktikçe anlamlı hale gelir.
+1. Önceki tamamlanmış run'ın `catalog_snapshot`'ı alınır (yoksa aktif DB bootstrap).
+2. `previous_ids - current_ids` → `is_active=0`, `removed_at` set.
+3. Kısmi scrape'te catalog diff **atlanır** (deploy da atlanır).
 
-### Best Deals
+Son 24/48 saat sold sayımları **Asia/Qatar** cutoff ile hesaplanır.
 
-O günkü en yüksek indirim yüzdesine sahip ürünler (varsayılan: top 20).
+### Buy signal
+
+- `min_days_tracked >= 2`
+- Fiyat varyasyonu geçmişi var
+- `is_at_lowest` veya `pct_above_lowest ≤ 2`
 
 ---
 
 ## Web dashboard
 
-**Stack:** Next.js 15 (App Router), Tailwind CSS, Vercel'de host.
+**Stack:** Next.js 15, Tailwind, Vercel.
 
-### Sayfalar
+| Rota | İçerik | JSON |
+|------|--------|------|
+| `/` | Overview, stats | `meta.json` |
+| `/best-deals` | En yüksek indirim % | `best_deals.json` |
+| `/buy-signals` | Dip fiyata yakın | `buy_signals.json` |
+| `/biggest-drops` | En büyük QAR düşüşler | `biggest_drops.json` |
+| `/price-changes` | Tüm değişimler | `price_changes.json` |
+| `/products` | Katalog + filtre | `products.json` (shared client fetch) |
+| `/products/[id]` | Ürün detay (SSR) | server `loadProductDetail` |
+| `/brands`, `/sizes` | Keşif | `brand_stats.json`, `products.json` |
+| `/sold` | Satılan / kalkmış | `sold_products.json` |
+| `/compare`, `/my-list` | Araçlar | localStorage + catalog |
 
-| Rota | İçerik | Veri kaynağı |
-|------|--------|--------------|
-| `/` | Genel özet, istatistik kartları | `meta.json` |
-| `/best-deals` | En iyi 20 indirim | `best_deals.json` |
-| `/buy-signals` | Alım sinyali ürünleri (sayfalama) | `buy_signals.json` |
-| `/products` | Tüm katalog (filtre + lazy image) | `products.json` |
-| `/price-changes` | Son fiyat değişimleri | `price_changes.json` |
+`products.json` ~3–4 MB — `catalog-client.ts` ile tek fetch paylaşılır.
 
-JSON dosyaları bilinçli olarak **parçalı** tutulur (~8 MB tek dosya yerine sayfa başına küçük dosyalar → tarayıcı donması önlenir).
-
-### Mobil uyumluluk
-
-- Kaydırılabilir navigasyon, 44px dokunma alanları
-- Küçük ekranda kart layout, büyük ekranda tablo
-- 320px ve üzeri viewport desteği
+Monolithic `dashboard.json` artık üretilmez; web yalnızca parçalı `web/public/data/*.json` dosyalarını kullanır.
 
 ---
 
-## Veri akışı
+## Veri akışı (production)
 
 ```
-Scrape (152 sayfa)
-    ↓
-SQLite'a yaz (sayfa sayfa)
-    ↓
-export_web.py → web/public/data/*.json
-    ↓
-next build (JSON public/ altından statik servis edilir)
-    ↓
-Vercel production deploy
+Cloudflare cron (UTC :15)
+  → workflow_dispatch daily-tracker.yml
+      → restore GHA cache (data/)
+      → python daily_tracker.py
+          → scrape (152 sayfa)
+          → scrape_complete? → export_web + validate_export
+          → kısmi? → exit 2, notify, deploy YOK
+      → save GHA cache
+      → npm ci && npm run build && vercel deploy --prod
 ```
+
+`vercel.json` → `"ignoreCommand": "exit 0"` — Vercel Git push deploy **kapalı**; veri her zaman Actions üzerinden gelir.
 
 ---
 
 ## Deploy yolları
 
-Sistemde **iki bağımsız deploy kanalı** vardır:
+| Yol | Ne zaman | Scrape |
+|-----|----------|--------|
+| GitHub Actions `daily-tracker.yml` | Saatlik / manuel dispatch | Evet |
+| `vercel deploy` local | Acil / debug | Hayır (mevcut JSON) |
+| Vercel Git integration | Devre dışı (`ignoreCommand`) | — |
 
-### 1. Git push → Vercel Git entegrasyonu
+**Gerekli GitHub secrets:** `VERCEL_TOKEN`, isteğe bağlı `TELEGRAM_*`, `DISCORD_WEBHOOK_URL`
 
-`main` branch'e push yapıldığında Vercel otomatik build alır. Bu yol **scrape çalıştırmaz** — repodaki mevcut JSON ile deploy eder. UI/kod değişiklikleri için uygundur.
-
-### 2. GitHub Actions → `vercel deploy --prod`
-
-`.github/workflows/daily-tracker.yml` workflow'u:
-
-1. Repoyu checkout eder
-2. `python daily_tracker.py` — tam scrape + JSON export
-3. `npm ci && npm run build` (`web/` içinde)
-4. Vercel CLI ile production deploy
-
-**Tetikleyiciler:**
-- Cron: her gün **06:00 Qatar saati** (03:00 UTC)
-- Manuel: Actions sekmesinden `workflow_dispatch`
-
-**Gerekli secret:** `VERCEL_TOKEN`
-
-### 3. Local deploy (manuel)
-
-```bash
-python tracker.py --export-web
-cd web && npx vercel deploy --prod --yes --scope mst4fa-6141s-projects
-```
-
-Local DB'deki güncel veriyi canlıya almak için kullanılır.
+**Cloudflare Worker secrets:** `GITHUB_PAT` — bkz. [workers/github-cron/README.md](./workers/github-cron/README.md)
 
 ---
 
-## Local vs GitHub Actions farkı
+## Local vs GitHub Actions
 
-| | Local (Mac) | GitHub Actions |
-|---|-------------|----------------|
-| Kaynak kod | Aynı (`main` branch) | Aynı |
-| SQLite DB | Kalıcı, günler birikir | Her run **sıfırdan** başlar |
-| `days_tracked` | Artar | İlk günlerde `1` kalır |
-| Buy signal kalitesi | Zamanla iyileşir | DB cache olmadan sınırlı |
-
-> **Not:** Actions'ta DB'nin run'lar arası korunması için henüz artifact/cache eklenmemiştir. Uzun vadeli fiyat geçmişi için bu iyileştirme planlanabilir.
+| | Local | GitHub Actions |
+|---|-------|----------------|
+| SQLite | Kalıcı | `actions/cache` ile korunur |
+| `days_tracked` | Birikir | Cache ile birikir |
+| Deploy | Manuel Vercel CLI | Otomatik (tam scrape sonrası) |
+| Bildirim | `.env` ile opsiyonel | Secrets |
 
 ---
 
 ## Komutlar
 
-### Kurulum
-
 ```bash
-python -m venv .venv
-source .venv/bin/activate
+# Kurulum
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cd web && npm ci
-```
 
-### Günlük kullanım
-
-```bash
-# Tam scrape + DB güncelle + JSON export
+# Scrape + export
+python daily_tracker.py
 python tracker.py --update
-
-# Sadece mevcut DB'den JSON export (scrape yok)
 python tracker.py --export-web
-
-# Terminal raporu
 python tracker.py --report
 
-# Sadece görselleri güncelle
-python backfill_images.py
-```
+# Test
+python -m unittest discover -s tests
+cd web && npm test && npm run build
 
-`daily_tracker.py` = `tracker.py --update` ile aynı scrape/export mantığı (Actions'ın kullandığı entry point).
-
-### Web geliştirme
-
-```bash
-cd web
-npm run dev    # http://localhost:3000
+# Web dev
+cd web && npm run dev
 ```
 
 ---
@@ -257,48 +226,43 @@ npm run dev    # http://localhost:3000
 ## Yapılandırma (`config.yaml`)
 
 ```yaml
-base_url: "https://www.galerieslafayette.qa"
-offer_path: "/offer.html"
-max_pages: 0              # 0 = otomatik (152 sayfa)
-discounted_only: false    # false = tüm offer ürünleri
-
+max_pages: 0              # 0 = otomatik (~152)
+discounted_only: false
 output:
   db_path: "data/products_history.db"
-
 scraper:
-  speed: turbo              # stealth | normal | turbo
+  speed: turbo            # stealth | normal | turbo
 ```
 
 ---
 
-## GitHub Actions workflow özeti
+## GitHub Actions özeti
 
-```yaml
-on:
-  schedule: "0 3 * * *"    # 06:00 Qatar
-  workflow_dispatch:       # Manuel tetikleme
+### `daily-tracker.yml`
 
-steps:
-  - checkout
-  - pip install -r requirements.txt
-  - python daily_tracker.py      # ~5–18 dk
-  - npm ci && npm run build        # web/
-  - vercel deploy --prod           # web/
-```
+- **Tetikleyici:** `workflow_dispatch`, `repository_dispatch` (`hourly-scrape`)
+- **Timeout:** 50 dk
+- **Cache:** `gftracker-data-v2-*` → `data/`
+- **Deploy:** yalnızca `daily_tracker.py` exit 0 (tam scrape)
 
-Timeout: 45 dakika.
+### `ci.yml`
+
+- **Tetikleyici:** PR + push `main`
+- Python import smoke + `tests/`
+- `web`: `npm test`, `npm run build`
 
 ---
 
 ## Özet
 
-| Bileşen | Teknoloji | Rol |
-|---------|-----------|-----|
-| Scraper | Python + requests + BeautifulSoup | Offer sayfasından ürün çekme |
-| Depolama | SQLite | Fiyat geçmişi ve analitik |
-| Export | Python → JSON | Web UI besleme |
-| Dashboard | Next.js + Tailwind | Kullanıcı arayüzü |
-| Hosting | Vercel | Production deploy |
-| Otomasyon | GitHub Actions | Günlük scrape + deploy |
+| Bileşen | Teknoloji |
+|---------|-----------|
+| Scraper | Python, requests, BeautifulSoup |
+| Depolama | SQLite (WAL) + GHA cache |
+| Export | Parçalı JSON + `validate_export` |
+| UI | Next.js 15 + Tailwind |
+| Hosting | Vercel (CLI deploy) |
+| Cron | Cloudflare Worker → GitHub |
+| Bildirim | Telegram / Discord (opsiyonel) |
 
-GFTracker, indirimli ürünleri sistematik olarak izleyip **“bugün alınır mı?”** sorusuna veriyle cevap vermek için tasarlanmıştır. Kod değişiklikleri push ile, veri güncellemeleri ise scrape + deploy ile canlıya gider.
+GFTracker, offer sayfasındaki ürünleri sistematik izleyip **“şimdi alınır mı?”** sorusuna veriyle cevap vermek için tasarlanmıştır.

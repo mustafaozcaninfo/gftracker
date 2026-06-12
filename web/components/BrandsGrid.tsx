@@ -37,13 +37,17 @@ export function BrandsGrid() {
 
   return (
     <div className="space-y-4">
-      <input
-        type="search"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search brands…"
-        className="min-h-11 w-full max-w-md rounded-xl border border-black/10 px-3 py-2.5 text-sm outline-none ring-gl-gold focus:ring-2"
-      />
+      <label htmlFor="brands-search" className="block max-w-md text-sm">
+        <span className="sr-only">Search brands</span>
+        <input
+          id="brands-search"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search brands…"
+          className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-sm outline-none ring-gl-gold focus:ring-2"
+        />
+      </label>
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {entries.map(([name, stats]) => (

@@ -2,23 +2,17 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useProductsCatalog } from "@/lib/catalog-client";
 import type { Product } from "@/lib/types";
 import { formatQAR } from "@/lib/format";
+import { productGender } from "@/lib/gender";
 import { buildProductsHref, productDetailHref } from "@/lib/product-filters";
 import { useCompare } from "./CompareProvider";
 
 export function CompareView() {
   const { ids, ready, remove, clear } = useCompare();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/data/products.json")
-      .then((res) => res.json())
-      .then((data: { products: Product[] }) => setProducts(data.products))
-      .finally(() => setLoading(false));
-  }, []);
+  const { products, loading } = useProductsCatalog();
 
   const selected = useMemo(
     () =>
@@ -69,7 +63,7 @@ export function CompareView() {
     },
     {
       label: "Gender",
-      render: (p) => (p.gender ? p.gender : "—"),
+      render: (p) => productGender(p) || "—",
     },
     {
       label: "All-time low",

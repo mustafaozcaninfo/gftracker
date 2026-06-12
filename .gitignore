@@ -1,18 +1,49 @@
+# Python
 .venv/
 __pycache__/
 *.pyc
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+
+# OS / editor
 .DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Secrets & local env
+.env
+.env.*
+!.env.example
+
+# Data (generated / cached)
 data/products_history.db
 data/products_history.db-wal
 data/products_history.db-shm
+data/products_history.db-journal
 data/scrape_history.json
+data/daily_snapshot_*.json
 logs/
 config.test.yaml
-.env
-.env.*
 
+# Legacy monolithic export (no longer produced)
+web/public/data/dashboard.json
+
+# Web
 web/node_modules/
-workers/github-cron/node_modules/
 web/.next/
 web/out/
 web/.vercel/
+web/.turbo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Cloudflare Worker
+workers/github-cron/node_modules/
+workers/github-cron/.wrangler/
+workers/github-cron/.dev.vars

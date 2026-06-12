@@ -44,7 +44,7 @@ export function SoldList({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2 text-sm text-neutral-600">
-        <span>{soldRecent48h.toLocaleString()} gone in 48h</span>
+        <span>{soldRecent48h.toLocaleString()} gone in 48h (Qatar time)</span>
         <span className="text-neutral-300">·</span>
         <span>{soldTotal.toLocaleString()} total removed from offer</span>
       </div>
@@ -60,6 +60,8 @@ export function SoldList({
             key={key}
             type="button"
             role="tab"
+            id={`sold-tab-${key}`}
+            aria-controls={`sold-panel-${key}`}
             aria-selected={tab === key}
             onClick={() => setTab(key)}
             className={`inline-flex min-h-10 items-center rounded-full px-4 py-2 text-sm font-medium transition ${
@@ -74,17 +76,23 @@ export function SoldList({
         ))}
       </div>
 
-      {items.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center text-neutral-500">
-          {emptyMessage}
-        </p>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((item) => (
-            <SoldCard key={item.product_id} item={item} />
-          ))}
-        </div>
-      )}
+      <div
+        id={`sold-panel-${tab}`}
+        role="tabpanel"
+        aria-labelledby={`sold-tab-${tab}`}
+      >
+        {items.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center text-neutral-500">
+            {emptyMessage}
+          </p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {items.map((item) => (
+              <SoldCard key={item.product_id} item={item} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
