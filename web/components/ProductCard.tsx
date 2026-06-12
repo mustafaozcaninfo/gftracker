@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Product } from "@/lib/types";
 import { formatQAR } from "@/lib/format";
+import { productDetailHref } from "@/lib/product-filters";
 import { BrandLink } from "./BrandLink";
 import { CompareToggle } from "./CompareToggle";
 import { LikeButton } from "./LikeButton";
@@ -67,7 +68,7 @@ export function ProductCard({
       <div className="flex flex-1 flex-col gap-2.5 p-3 sm:gap-3 sm:p-4">
         <h3 className="line-clamp-3 text-sm font-medium leading-snug text-neutral-900 sm:text-[15px]">
           <Link
-            href={`/products/${product.product_id}`}
+            href={productDetailHref(product.product_id)}
             className="hover:underline"
           >
             {product.name}

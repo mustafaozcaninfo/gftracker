@@ -1,5 +1,7 @@
+import Link from "next/link";
 import type { PriceChange } from "@/lib/types";
 import { formatDate, formatQAR } from "@/lib/format";
+import { productDetailHref } from "@/lib/product-filters";
 
 interface PriceChangesProps {
   changes: PriceChange[];
@@ -30,7 +32,14 @@ export function PriceChanges({ changes }: PriceChangesProps) {
                   key={`${change.product_id}-${change.timestamp}-card`}
                   className="rounded-2xl border border-black/10 bg-white p-4"
                 >
-                  <p className="font-medium text-neutral-900">{change.name}</p>
+                  <p className="font-medium text-neutral-900">
+                    <Link
+                      href={productDetailHref(change.product_id)}
+                      className="hover:underline"
+                    >
+                      {change.name}
+                    </Link>
+                  </p>
                   <p className="text-xs text-neutral-500">SKU {change.sku}</p>
                   <div className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
                     <span
@@ -81,7 +90,12 @@ export function PriceChanges({ changes }: PriceChangesProps) {
                       >
                         <td className="px-4 py-3">
                           <p className="font-medium text-neutral-900">
-                            {change.name}
+                            <Link
+                              href={productDetailHref(change.product_id)}
+                              className="hover:underline"
+                            >
+                              {change.name}
+                            </Link>
                           </p>
                           <p className="text-xs text-neutral-500">
                             SKU {change.sku}

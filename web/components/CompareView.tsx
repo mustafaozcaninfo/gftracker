@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { Product } from "@/lib/types";
 import { formatQAR } from "@/lib/format";
-import { buildProductsHref } from "@/lib/product-filters";
+import { buildProductsHref, productDetailHref } from "@/lib/product-filters";
 import { useCompare } from "./CompareProvider";
 
 export function CompareView() {
@@ -115,7 +115,10 @@ export function CompareView() {
               {selected.map((product) => (
                 <th key={product.product_id} className="min-w-[160px] p-3 align-top">
                   <div className="space-y-2">
-                    <div className="relative aspect-square overflow-hidden rounded-xl bg-neutral-100">
+                    <Link
+                      href={productDetailHref(product.product_id)}
+                      className="relative block aspect-square overflow-hidden rounded-xl bg-neutral-100"
+                    >
                       {product.image_url ? (
                         <Image
                           src={product.image_url}
@@ -125,9 +128,9 @@ export function CompareView() {
                           unoptimized
                         />
                       ) : null}
-                    </div>
+                    </Link>
                     <Link
-                      href={`/products/${product.product_id}`}
+                      href={productDetailHref(product.product_id)}
                       className="line-clamp-2 font-medium hover:underline"
                     >
                       {product.name}

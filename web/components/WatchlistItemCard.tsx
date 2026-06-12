@@ -3,7 +3,7 @@
 import Image from "next/image";
 import type { Product } from "@/lib/types";
 import { formatDate, formatQAR } from "@/lib/format";
-import { buildProductsHref } from "@/lib/product-filters";
+import { buildProductsHref, productDetailHref } from "@/lib/product-filters";
 import type { WatchlistItem } from "@/lib/watchlist";
 import { priceDelta } from "@/lib/watchlist";
 import Link from "next/link";
@@ -39,7 +39,10 @@ export function WatchlistItemCard({
   return (
     <article className="overflow-hidden rounded-2xl border border-black/10 bg-white">
       <div className="flex flex-col sm:flex-row">
-        <div className="relative aspect-[4/5] w-full shrink-0 bg-neutral-100 sm:w-36 md:w-44">
+        <Link
+          href={productDetailHref(item.product_id)}
+          className="relative aspect-[4/5] w-full shrink-0 bg-neutral-100 sm:w-36 md:w-44"
+        >
           {imageUrl ? (
             <Image
               src={imageUrl}
@@ -59,14 +62,19 @@ export function WatchlistItemCard({
               {discount}% OFF
             </span>
           )}
-        </div>
+        </Link>
 
         <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-1">
               <BrandLink brand={item.snapshot.brand} className="text-[10px] sm:text-xs" />
               <h3 className="font-medium leading-snug text-neutral-900">
-                {item.snapshot.name}
+                <Link
+                  href={productDetailHref(item.product_id)}
+                  className="hover:underline"
+                >
+                  {item.snapshot.name}
+                </Link>
               </h3>
               <p className="text-xs text-neutral-500">
                 Liked {formatDate(item.liked_at)} · SKU {item.snapshot.sku}
@@ -157,11 +165,17 @@ export function WatchlistItemCard({
           )}
 
           <div className="flex flex-wrap gap-2">
+            <Link
+              href={productDetailHref(item.product_id)}
+              className="inline-flex min-h-11 items-center rounded-xl bg-gl-black px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800"
+            >
+              View details
+            </Link>
             <a
               href={storeUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center rounded-xl bg-gl-black px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800"
+              className="inline-flex min-h-11 items-center rounded-xl border border-black/10 px-4 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
             >
               View on store
             </a>

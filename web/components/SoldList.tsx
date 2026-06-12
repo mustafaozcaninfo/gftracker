@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { SoldProduct } from "@/lib/types";
 import { formatDate, formatQAR } from "@/lib/format";
-import { buildProductsHref } from "@/lib/product-filters";
+import { buildProductsHref, productDetailHref } from "@/lib/product-filters";
 import { BrandLink } from "./BrandLink";
 
 type SoldTab = "recent" | "all";
@@ -97,7 +97,10 @@ function SoldCard({ item }: { item: SoldProduct }) {
 
   return (
     <article className="flex gap-3 rounded-2xl border border-black/10 bg-white p-3 sm:p-4">
-      <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-xl bg-neutral-100">
+      <Link
+        href={productDetailHref(item.product_id)}
+        className="relative h-24 w-20 shrink-0 overflow-hidden rounded-xl bg-neutral-100"
+      >
         {item.image_url ? (
           <Image
             src={item.image_url}
@@ -114,12 +117,12 @@ function SoldCard({ item }: { item: SoldProduct }) {
         <span className="absolute left-1 top-1 rounded bg-neutral-900/80 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
           Sold
         </span>
-      </div>
+      </Link>
 
       <div className="min-w-0 flex-1 space-y-1">
         <BrandLink brand={item.brand} className="text-[10px]" />
         <h3 className="line-clamp-2 text-sm font-medium leading-snug">
-          <Link href={`/products/${item.product_id}`} className="hover:underline">
+          <Link href={productDetailHref(item.product_id)} className="hover:underline">
             {item.name}
           </Link>
         </h3>

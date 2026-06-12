@@ -1,6 +1,7 @@
 import type { PriceDrop } from "@/lib/types";
 import { formatDate, formatQAR } from "@/lib/format";
 import Link from "next/link";
+import { productDetailHref } from "@/lib/product-filters";
 
 interface BiggestDropsListProps {
   drops: PriceDrop[];
@@ -24,7 +25,7 @@ export function BiggestDropsList({ drops }: BiggestDropsListProps) {
             className="rounded-2xl border border-black/10 bg-white p-4"
           >
             <Link
-              href={`/products/${drop.product_id}`}
+              href={productDetailHref(drop.product_id)}
               className="font-medium text-neutral-900 hover:underline"
             >
               {drop.name}
@@ -68,7 +69,7 @@ export function BiggestDropsList({ drops }: BiggestDropsListProps) {
                 >
                   <td className="px-4 py-3">
                     <Link
-                      href={`/products/${drop.product_id}`}
+                      href={productDetailHref(drop.product_id)}
                       className="font-medium hover:underline"
                     >
                       {drop.name}

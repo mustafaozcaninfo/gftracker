@@ -97,3 +97,7 @@ export function buildProductsHref(
   const qs = params.toString();
   return qs ? `/products?${qs}` : "/products";
 }
+
+export function productDetailHref(productId: string): string {
+  return `/products/${productId}`;
+}

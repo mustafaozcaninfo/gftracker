@@ -6,7 +6,7 @@ import {
   formatScrapeDuration,
   formatScrapeRunWhen,
 } from "@/lib/format";
-import { buildProductsHref } from "@/lib/product-filters";
+import { buildProductsHref, productDetailHref } from "@/lib/product-filters";
 import { DiscountHistogram } from "./DiscountHistogram";
 
 interface OverviewExtrasProps {
@@ -76,7 +76,7 @@ export function OverviewExtras({ meta, drops }: OverviewExtrasProps) {
               <li key={`${drop.product_id}-${drop.timestamp}`} className="flex gap-3 py-3">
                 <div className="min-w-0 flex-1">
                   <Link
-                    href={`/products/${drop.product_id}`}
+                    href={productDetailHref(drop.product_id)}
                     className="font-medium hover:underline"
                   >
                     {drop.name}
