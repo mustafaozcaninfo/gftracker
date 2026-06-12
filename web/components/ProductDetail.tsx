@@ -142,8 +142,11 @@ export function ProductDetail({ productId }: ProductDetailProps) {
 
   return (
     <section className="space-y-6">
-      <Link href="/products" className="text-sm text-neutral-500 hover:text-neutral-800">
-        ← All products
+      <Link
+        href={buildProductsHref({ brand: product.brand })}
+        className="text-sm text-neutral-500 hover:text-neutral-800"
+      >
+        ← {product.brand}
       </Link>
 
       <div className="grid gap-6 lg:grid-cols-2">

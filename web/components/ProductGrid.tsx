@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   useCallback,
   useDeferredValue,
@@ -30,11 +31,7 @@ import { ProductCard } from "./ProductCard";
 
 const PAGE_SIZE = 24;
 
-interface ProductGridProps {
-  brands: string[];
-}
-
-export function ProductGrid({ brands }: ProductGridProps) {
+export function ProductGrid() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -50,11 +47,18 @@ export function ProductGrid({ brands }: ProductGridProps) {
   const { brand, size, gender, maxprice, mindisc: minDiscount, sort } = filters;
 
   const [query, setQuery] = useState(filters.search);
+  const [maxPriceInput, setMaxPriceInput] = useState(
+    filters.maxprice > 0 ? String(filters.maxprice) : "",
+  );
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
     setQuery(filters.search);
   }, [filters.search]);
+
+  useEffect(() => {
+    setMaxPriceInput(filters.maxprice > 0 ? String(filters.maxprice) : "");
+  }, [filters.maxprice]);
 
   const updateFilters = useCallback(
     (patch: Partial<{
@@ -87,6 +91,15 @@ export function ProductGrid({ brands }: ProductGridProps) {
     }, 300);
     return () => window.clearTimeout(handle);
   }, [query, filters.search, updateFilters]);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      const next = Number(maxPriceInput) || 0;
+      if (next === filters.maxprice) return;
+      updateFilters({ maxprice: next });
+    }, 400);
+    return () => window.clearTimeout(handle);
+  }, [maxPriceInput, filters.maxprice, updateFilters]);
 
   useEffect(() => {
     let cancelled = false;
@@ -290,10 +303,8 @@ export function ProductGrid({ brands }: ProductGridProps) {
             type="number"
             min={0}
             step={50}
-            value={maxprice || ""}
-            onChange={(e) =>
-              updateFilters({ maxprice: Number(e.target.value) || 0 })
-            }
+            value={maxPriceInput}
+            onChange={(e) => setMaxPriceInput(e.target.value)}
             placeholder="Any"
             className="min-h-11 w-full rounded-xl border border-black/10 px-3 py-2.5 text-base outline-none ring-gl-gold focus:ring-2 sm:text-sm"
           />
@@ -340,17 +351,22 @@ export function ProductGrid({ brands }: ProductGridProps) {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center text-neutral-500">
-          No products match your filters.
-        </p>
+        <div className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center">
+          <p className="text-neutral-600">No products match your filters.</p>
+          <Link
+            href="/products"
+            className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-gl-black px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-800"
+          >
+            Clear all filters
+          </Link>
+        </div>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-            {visible.map((product, index) => (
+            {visible.map((product) => (
               <ProductCard
                 key={product.product_id}
                 product={product}
-                rank={index + 1}
                 lazyImage
               />
             ))}

@@ -59,6 +59,18 @@ export function ActiveFilterChips({ filters, searchQuery }: ActiveFilterChipsPro
       href: buildProductsHref({ ...filters, mindisc: 0 }),
     });
   }
+  if (filters.sort !== "discount") {
+    const sortLabels: Record<string, string> = {
+      price_asc: "Price ↑",
+      price_desc: "Price ↓",
+      name: "Name A–Z",
+    };
+    chips.push({
+      key: "sort",
+      label: `Sort: ${sortLabels[filters.sort] ?? filters.sort}`,
+      href: buildProductsHref({ ...filters, sort: "discount" }),
+    });
+  }
 
   if (chips.length === 0) return null;
 

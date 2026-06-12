@@ -22,7 +22,7 @@ export default async function ProductsPage() {
       counts={{ products: meta.stats.total_products }}
     >
       <Suspense fallback={<ProductsGridFallback />}>
-        <ProductGrid brands={meta.brands} />
+        <ProductGrid />
       </Suspense>
     </PageShell>
   );

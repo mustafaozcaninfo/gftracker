@@ -69,7 +69,7 @@ export function ProductCard({
         <h3 className="line-clamp-3 text-sm font-medium leading-snug text-neutral-900 sm:text-[15px]">
           <Link
             href={productDetailHref(product.product_id)}
-            className="hover:underline"
+            className="block hover:underline"
           >
             {product.name}
           </Link>
@@ -125,14 +125,22 @@ export function ProductCard({
           <span className="shrink-0">Page {product.page}</span>
         </div>
 
-        <a
-          href={product.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-gl-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-neutral-800 sm:w-auto"
-        >
-          View on site
-        </a>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={productDetailHref(product.product_id)}
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-gl-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-neutral-800 sm:flex-none"
+          >
+            View details
+          </Link>
+          <a
+            href={product.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-black/10 px-4 py-2.5 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50 sm:flex-none"
+          >
+            View on store
+          </a>
+        </div>
       </div>
     </article>
   );
