@@ -269,6 +269,48 @@ class OfferScraper:
         return ""
 
     @staticmethod
+    def _sizes_from_json_config(config: dict[str, Any]) -> list[str]:
+        """Return in-stock size labels for this listing tile.
+
+        Magento embeds every possible size on the attribute, but only options
+        whose child SKU appears in ``index`` (and optionally ``salable``) are
+        actually available for this product.
+        """
+        index_ids = {str(k) for k in (config.get("index") or {})}
+        salable = config.get("salable") or {}
+        sizes: list[str] = []
+
+        for attr in (config.get("attributes") or {}).values():
+            code = (attr.get("code") or "").strip().lower()
+            label_attr = (attr.get("label") or "").strip().lower()
+            if code != "size" and label_attr != "size":
+                continue
+
+            attr_id = str(attr.get("id", ""))
+            salable_opts = {str(x) for x in (salable.get(attr_id) or [])}
+
+            for opt in attr.get("options") or []:
+                label = (opt.get("label") or "").strip()
+                if not label:
+                    continue
+
+                opt_id = str(opt.get("id", ""))
+                child_ids = {str(p) for p in (opt.get("products") or [])}
+
+                if index_ids:
+                    if not child_ids or not (child_ids & index_ids):
+                        continue
+                elif not child_ids:
+                    continue
+
+                if salable_opts and opt_id not in salable_opts:
+                    continue
+
+                sizes.append(label)
+
+        return sizes
+
+    @staticmethod
     def _extract_sizes(item) -> list[str]:
         match = JSON_CONFIG_PATTERN.search(str(item))
         if not match:
@@ -279,16 +321,43 @@ class OfferScraper:
         except json.JSONDecodeError:
             return []
 
+        sizes = OfferScraper._sizes_from_json_config(config)
+        if sizes:
+            raw_labels: list[str] = []
+            for attr in (config.get("attributes") or {}).values():
+                code = (attr.get("code") or "").strip().lower()
+                label_attr = (attr.get("label") or "").strip().lower()
+                if code == "size" or label_attr == "size":
+                    raw_labels = [
+                        (opt.get("label") or "").strip()
+                        for opt in attr.get("options") or []
+                        if (opt.get("label") or "").strip()
+                    ]
+                    break
+            if len(raw_labels) > len(sizes):
+                logger.debug(
+                    "Sizes filtered for product %s: %s -> %s",
+                    config.get("productId"),
+                    raw_labels,
+                    sizes,
+                )
+            return sizes
+
         for attr in (config.get("attributes") or {}).values():
             code = (attr.get("code") or "").strip().lower()
             label = (attr.get("label") or "").strip().lower()
             if code == "size" or label == "size":
-                sizes = [
+                fallback = [
                     opt.get("label", "").strip()
                     for opt in attr.get("options") or []
                     if opt.get("label")
                 ]
-                return sizes
+                if fallback:
+                    logger.debug(
+                        "Size fallback without index match: %s",
+                        fallback,
+                    )
+                return fallback
         return []
 
     @staticmethod
