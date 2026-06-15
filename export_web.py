@@ -14,10 +14,14 @@ from models import ProductStore
 SCRAPE_HISTORY_EXPORT_LIMIT = 48
 SCRAPE_HISTORY_BACKUP_LIMIT = 96
 
+NEW_PRODUCTS_LIST_HOURS = 168
+NEW_PRODUCTS_BADGE_HOURS = 48
+NEW_PRODUCTS_EXPORT_LIMIT = 300
+
 REQUIRED_EXPORT_FILES = (
     "meta.json",
     "products.json",
-    "buy_signals.json",
+    "new_products.json",
     "sold_products.json",
     "price_changes.json",
     "best_deals.json",
@@ -31,7 +35,7 @@ REQUIRED_META_STATS = (
     "drops_today",
     "sold_total",
     "sold_recent_48h",
-    "buy_signals_count",
+    "new_products_48h",
 )
 
 
@@ -87,7 +91,11 @@ def build_dashboard_payload(
 ) -> dict[str, Any]:
     products = store.get_products_with_analytics()
     price_changes = store.get_all_price_changes(limit=200)
-    buy_signals = store.get_buy_signals()
+    new_products = store.get_new_products(
+        recent_hours=NEW_PRODUCTS_LIST_HOURS,
+        limit=NEW_PRODUCTS_EXPORT_LIMIT,
+    )
+    new_products_48h = store.count_new_products(recent_hours=NEW_PRODUCTS_BADGE_HOURS)
     scrape_history = (
         merge_scrape_history(store, data_dir)
         if data_dir is not None
@@ -114,7 +122,7 @@ def build_dashboard_payload(
         "brand_count": len(brands),
         "price_changes_today": len(store.get_today_price_changes()),
         "drops_today": store.count_today_drops(),
-        "buy_signals_count": len(buy_signals),
+        "new_products_48h": new_products_48h,
         "days_tracked": max((p.get("days_tracked") or 0 for p in products), default=0),
         "discount_buckets": discount_buckets,
         "high_discount_50_plus": sum(1 for d in discounts if d >= 50),
@@ -131,7 +139,7 @@ def build_dashboard_payload(
         "brands": brands,
         "products": products,
         "price_changes": price_changes,
-        "buy_signals": buy_signals,
+        "new_products": new_products,
         "best_deals": store.get_today_best_deals(top_n=20),
         "scrape_history": scrape_history,
     }
@@ -147,7 +155,7 @@ def validate_export(out_dir: str | Path) -> None:
     try:
         meta = json.loads((root / "meta.json").read_text(encoding="utf-8"))
         products_payload = json.loads((root / "products.json").read_text(encoding="utf-8"))
-        buy_payload = json.loads((root / "buy_signals.json").read_text(encoding="utf-8"))
+        new_payload = json.loads((root / "new_products.json").read_text(encoding="utf-8"))
         sold_payload = json.loads((root / "sold_products.json").read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
         raise ValueError(f"Export validation failed: unreadable JSON in {root}") from exc
@@ -161,11 +169,11 @@ def validate_export(out_dir: str | Path) -> None:
         raise ValueError("Export validation failed: products.json missing size_counts")
 
     product_count = len(products_payload.get("products") or [])
-    buy_count = len(buy_payload.get("buy_signals") or [])
-    if buy_count > product_count:
+    new_count = len(new_payload.get("new_products") or [])
+    if new_count > product_count:
         raise ValueError(
-            "Export validation failed: buy_signals count exceeds products "
-            f"({buy_count} > {product_count})"
+            "Export validation failed: new_products count exceeds products "
+            f"({new_count} > {product_count})"
         )
 
     if "sold_all" not in sold_payload or "sold_recent" not in sold_payload:
@@ -214,8 +222,15 @@ def export_dashboard(
         json.dumps({"best_deals": payload["best_deals"]}, ensure_ascii=False),
         encoding="utf-8",
     )
-    (out_dir / "buy_signals.json").write_text(
-        json.dumps({"buy_signals": payload["buy_signals"]}, ensure_ascii=False),
+    (out_dir / "new_products.json").write_text(
+        json.dumps(
+            {
+                "new_products": payload["new_products"],
+                "window_hours": NEW_PRODUCTS_LIST_HOURS,
+                "new_products_48h": payload["stats"]["new_products_48h"],
+            },
+            ensure_ascii=False,
+        ),
         encoding="utf-8",
     )
     size_labels: set[str] = set()

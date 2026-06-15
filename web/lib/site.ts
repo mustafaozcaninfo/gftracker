@@ -4,4 +4,4 @@ export const SITE_URL =
 export const SITE_NAME = "GF Tracker";
 
 export const SITE_DESCRIPTION =
-  "Hourly price tracker for Galeries Lafayette Qatar offer page — deals, drops, buy signals, and sold items.";
+  "Hourly price tracker for Galeries Lafayette Qatar offer page — deals, drops, new products, and sold items.";

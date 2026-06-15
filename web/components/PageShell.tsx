@@ -8,7 +8,7 @@ interface PageShellProps {
   stats: DashboardStats;
   source: string;
   generatedAt: string;
-  counts?: Partial<Record<"best_deals" | "buy_signals" | "products" | "changes" | "sold", number>>;
+  counts?: Partial<Record<"best_deals" | "new_products" | "products" | "changes" | "sold", number>>;
   children: ReactNode;
 }
 

@@ -17,7 +17,7 @@ def build_summary_message(summary: dict[str, Any], stats: dict[str, Any]) -> str
         f"Products: {stats.get('total_products', 0):,}",
         f"Price changes today: {stats.get('price_changes_today', 0)}",
         f"Drops today: {stats.get('drops_today', 0)}",
-        f"Buy signals: {stats.get('buy_signals_count', 0):,}",
+        f"New products (48h): {stats.get('new_products_48h', 0):,}",
         f"Avg discount: {stats.get('avg_discount', 0)}%",
         f"50%+ off: {stats.get('high_discount_50_plus', 0):,}",
         f"Pages scraped: {summary.get('pages_scraped', 0)}/{summary.get('total_pages', 0)}",

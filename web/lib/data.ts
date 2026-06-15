@@ -34,7 +34,7 @@ const emptyStats: DashboardStats = {
   brand_count: 0,
   price_changes_today: 0,
   drops_today: 0,
-  buy_signals_count: 0,
+  new_products_48h: 0,
   days_tracked: 0,
   sold_recent_24h: 0,
   sold_recent_48h: 0,
@@ -63,12 +63,26 @@ export async function loadBestDeals(): Promise<Product[]> {
   }
 }
 
-export async function loadBuySignals(): Promise<Product[]> {
+export interface NewProductsData {
+  products: Product[];
+  window_hours: number;
+  new_products_48h: number;
+}
+
+export async function loadNewProducts(): Promise<NewProductsData> {
   try {
-    const data = await readJson<{ buy_signals: Product[] }>("buy_signals.json");
-    return data.buy_signals;
+    const data = await readJson<{
+      new_products: Product[];
+      window_hours?: number;
+      new_products_48h?: number;
+    }>("new_products.json");
+    return {
+      products: data.new_products ?? [],
+      window_hours: data.window_hours ?? 168,
+      new_products_48h: data.new_products_48h ?? 0,
+    };
   } catch {
-    return [];
+    return { products: [], window_hours: 168, new_products_48h: 0 };
   }
 }
 

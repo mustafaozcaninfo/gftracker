@@ -162,9 +162,9 @@ def run_update(config_path: str | Path = "config.yaml", verbose: bool = False) -
         "pages_failed": scrape_meta["pages_failed"],
         "total_pages": scrape_meta["total_pages"],
         "scrape_complete": scrape_complete,
-        "new_products": db_stats.new_products,
+        "new_products_scraped": db_stats.new_products,
         "price_changes": db_stats.price_changes,
-        "buy_signals": len(store.get_buy_signals()),
+        "new_products_48h": store.count_new_products(recent_hours=48),
         "scrape_run_id": run_id,
         "snapshot_path": str(snapshot_path),
         "web_dashboard_path": str(web_path) if web_path else None,
@@ -174,7 +174,7 @@ def run_update(config_path: str | Path = "config.yaml", verbose: bool = False) -
     logger.info(
         "Update complete: %s products, %s new, %s price changes, snapshot=%s",
         summary["products_found"],
-        summary["new_products"],
+        summary["new_products_scraped"],
         summary["price_changes"],
         snapshot_path,
     )
@@ -189,12 +189,12 @@ def run_report(config_path: str | Path = "config.yaml", verbose: bool = False) -
     store = ProductStore(config["output"]["db_path"])
     best_deals = store.get_today_best_deals(top_n=top_n)
     price_changes = store.get_today_price_changes()
-    buy_signals = store.get_buy_signals()
+    new_products = store.get_new_products(recent_hours=168, limit=50)
 
     return {
         "best_deals": best_deals,
         "price_changes": price_changes,
-        "buy_signals": buy_signals,
+        "new_products": new_products,
         "top_n": top_n,
     }
 
@@ -220,20 +220,17 @@ def print_report(report: dict[str, Any]) -> None:
                 f"    {deal['url']}\n"
             )
 
-    print("\n=== Buy Signals (at or near all-time low) ===\n")
-    if not report.get("buy_signals"):
-        print("No buy signals yet — need multiple days of tracking.")
+    print("\n=== New on Offer (last 7 days) ===\n")
+    if not report.get("new_products"):
+        print("No newly listed products in the recent window.")
     else:
-        for deal in report["buy_signals"][:15]:
+        for deal in report["new_products"][:15]:
             current = deal.get("current_price")
-            lowest = deal.get("lowest_price", current)
-            lowest_date = deal.get("lowest_date", "?")
-            flag = "BUY NOW" if deal.get("is_at_lowest") else "NEAR LOW"
+            seen = deal.get("first_seen_at", "?")
             now_line = f"QAR {current:.2f}" if current is not None else "n/a"
-            low_line = f"QAR {lowest:.2f}" if lowest is not None else "n/a"
             print(
-                f"[{flag}] {deal['brand']} - {deal['name']}\n"
-                f"    Now: {now_line} | Lowest: {low_line} on {lowest_date}\n"
+                f"- {deal['brand']} - {deal['name']}\n"
+                f"    {now_line} · {deal.get('discount_percent', 0)}% off · first seen {seen}\n"
             )
 
     print("\n=== Today's Price Changes ===\n")

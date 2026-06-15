@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import type { DashboardStats } from "@/lib/types";
 import { useWatchlist } from "./WatchlistProvider";
 
-type CountKey = "best_deals" | "buy_signals" | "products" | "changes" | "sold";
+type CountKey = "best_deals" | "new_products" | "products" | "changes" | "sold";
 
 interface NavItem {
   href: string;
@@ -19,7 +19,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Overview", short: "Home" },
   { href: "/best-deals", label: "Best Deals", countKey: "best_deals" },
   { href: "/biggest-drops", label: "Price Drops", short: "Drops", countKey: "changes" },
-  { href: "/buy-signals", label: "Buy Signals", short: "Signals", countKey: "buy_signals" },
+  { href: "/new-products", label: "New Products", short: "New", countKey: "new_products" },
   { href: "/products", label: "Products", countKey: "products" },
   { href: "/brands", label: "Brands" },
   { href: "/sizes", label: "Sizes" },
@@ -41,7 +41,7 @@ export function SiteHeader({ stats, counts = {} }: SiteHeaderProps) {
   const countFor = (key?: CountKey) => {
     if (!key) return undefined;
     if (key === "best_deals") return counts.best_deals ?? 20;
-    if (key === "buy_signals") return counts.buy_signals ?? stats.buy_signals_count;
+    if (key === "new_products") return counts.new_products ?? stats.new_products_48h;
     if (key === "products") return counts.products ?? stats.total_products;
     if (key === "changes") return counts.changes ?? stats.drops_today ?? stats.price_changes_today ?? 0;
     if (key === "sold") return stats.sold_recent_48h ?? 0;
@@ -101,7 +101,7 @@ export function SiteHeader({ stats, counts = {} }: SiteHeaderProps) {
                 : undefined;
             const showCount =
               count !== undefined &&
-              (countKey !== "sold" || count > 0) &&
+              (countKey !== "sold" && countKey !== "new_products" || count > 0) &&
               (!watchlist || count > 0);
 
             return (

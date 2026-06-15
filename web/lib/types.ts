@@ -21,6 +21,7 @@ export interface Product {
   savings_vs_peak?: number;
   days_tracked?: number;
   price_date?: string;
+  first_seen_at?: string;
 }
 
 export interface PriceChange {
@@ -85,7 +86,7 @@ export interface DashboardStats {
   brand_count: number;
   price_changes_today: number;
   drops_today?: number;
-  buy_signals_count: number;
+  new_products_48h: number;
   days_tracked: number;
   discount_buckets?: Record<string, number>;
   high_discount_50_plus?: number;
@@ -102,7 +103,7 @@ export interface DashboardData {
   brands: string[];
   products: Product[];
   price_changes: PriceChange[];
-  buy_signals: Product[];
+  new_products: Product[];
   best_deals: Product[];
   scrape_history?: ScrapeRun[];
 }

@@ -45,11 +45,11 @@ export default async function HomePage() {
       featured: true,
     },
     {
-      href: "/buy-signals",
-      title: "Buy Signals",
-      desc: "Within 2% of tracked lowest price",
-      count: stats.buy_signals_count ?? 0,
-      countLabel: "signals",
+      href: "/new-products",
+      title: "New Products",
+      desc: "Freshly listed on the offer — new discount arrivals",
+      count: stats.new_products_48h ?? 0,
+      countLabel: "48h",
       tone: "signal",
       featured: true,
     },
@@ -111,7 +111,7 @@ export default async function HomePage() {
       generatedAt={meta.generated_at}
       counts={{
         best_deals: bestDeals.length,
-        buy_signals: stats.buy_signals_count ?? 0,
+        new_products: stats.new_products_48h ?? 0,
         changes: stats.drops_today ?? 0,
       }}
     >

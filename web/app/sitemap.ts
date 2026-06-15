@@ -5,7 +5,7 @@ const ROUTES = [
   "/",
   "/products",
   "/best-deals",
-  "/buy-signals",
+  "/new-products",
   "/biggest-drops",
   "/price-changes",
   "/brands",

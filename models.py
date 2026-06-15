@@ -862,42 +862,63 @@ class ProductStore:
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def _product_ids_with_price_variation(self) -> set[str]:
+    def count_new_products(self, recent_hours: int = 48) -> int:
+        cutoff = self._hours_ago_qatar(recent_hours)
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) AS c
+                FROM products
+                WHERE is_active = 1 AND first_seen_at >= ?
+                """,
+                (cutoff,),
+            ).fetchone()
+        return int(row["c"]) if row else 0
+
+    def get_new_products(
+        self,
+        *,
+        recent_hours: int = 168,
+        min_discount: int = 0,
+        limit: int = 300,
+    ) -> list[dict[str, Any]]:
+        """Products first seen on the offer within the recent window (Qatar time)."""
+        cutoff = self._hours_ago_qatar(recent_hours)
+        analytics = {p["product_id"]: p for p in self.get_products_with_analytics()}
+
         with self._connect() as conn:
             rows = conn.execute(
                 """
-                SELECT product_id FROM daily_prices
-                GROUP BY product_id
-                HAVING COUNT(DISTINCT current_price) > 1
-                """
+                SELECT product_id, first_seen_at
+                FROM products
+                WHERE is_active = 1 AND first_seen_at >= ?
+                ORDER BY first_seen_at DESC
+                """,
+                (cutoff,),
             ).fetchall()
-        return {row["product_id"] for row in rows}
 
-    def get_buy_signals(
-        self,
-        max_pct_above_lowest: float = 2.0,
-        min_days_tracked: int = 2,
-    ) -> list[dict[str, Any]]:
-        """Products at or near their all-time low — good day to buy."""
-        products = self.get_products_with_analytics()
-        varied_ids = self._product_ids_with_price_variation()
-        signals = [
-            p
-            for p in products
-            if (p.get("days_tracked") or 0) >= min_days_tracked
-            and p.get("product_id") in varied_ids
-            and (
-                p.get("is_at_lowest")
-                or (p.get("pct_above_lowest", 100) <= max_pct_above_lowest)
-            )
-        ]
-        signals.sort(
+        results: list[dict[str, Any]] = []
+        for row in rows:
+            base = analytics.get(row["product_id"])
+            if not base:
+                continue
+            discount = int(base.get("discount_percent") or 0)
+            if discount < min_discount:
+                continue
+            item = dict(base)
+            item["first_seen_at"] = row["first_seen_at"]
+            results.append(item)
+            if len(results) >= limit:
+                break
+
+        results.sort(
             key=lambda p: (
-                p.get("pct_above_lowest") if p.get("pct_above_lowest") is not None else 999,
+                p.get("first_seen_at") or "",
                 -(p.get("discount_percent") or 0),
-            )
+            ),
+            reverse=True,
         )
-        return signals
+        return results
 
     def save_daily_snapshot(self, products: list[Product], snapshot_dir: str | Path) -> Path:
         snapshot_path = Path(snapshot_dir)
@@ -912,7 +933,7 @@ class ProductStore:
             "product_count": len(products),
             "products": [p.to_dict() for p in products],
             "analytics": analytics,
-            "buy_signals": self.get_buy_signals(),
+            "new_products_48h": self.count_new_products(recent_hours=48),
         }
         file_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
         return file_path
