@@ -1,25 +1,16 @@
-"use client";
-
 import { useEffect, useState } from "react";
-import type { Product } from "./types";
+import type { ProductsCatalogExport } from "./types";
 
-export interface ProductsCatalogData {
-  products: Product[];
-  brands?: string[];
-  sizes?: string[];
-  size_counts?: Record<string, number>;
-  genders?: string[];
-  gender_counts?: Record<string, number>;
-}
+export type { ProductsCatalogExport };
 
-let inflight: Promise<ProductsCatalogData> | null = null;
+let inflight: Promise<ProductsCatalogExport> | null = null;
 
-export function loadProductsCatalogClient(): Promise<ProductsCatalogData> {
+export function loadProductsCatalogClient(): Promise<ProductsCatalogExport> {
   if (!inflight) {
     inflight = fetch("/data/products.json")
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load catalog");
-        return res.json() as Promise<ProductsCatalogData>;
+        return res.json() as Promise<ProductsCatalogExport>;
       })
       .catch((err) => {
         inflight = null;
@@ -30,8 +21,10 @@ export function loadProductsCatalogClient(): Promise<ProductsCatalogData> {
 }
 
 export function useProductsCatalog() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [sizeCounts, setSizeCounts] = useState<Record<string, number>>({});
+  const [products, setProducts] = useState<ProductsCatalogExport["products"]>([]);
+  const [sizeCounts, setSizeCounts] = useState<ProductsCatalogExport["size_counts"]>(
+    {},
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Product } from "@/lib/types";
-import { formatQAR } from "@/lib/format";
+import { formatQAR, savingsPercent } from "@/lib/format";
 import { productDetailHref } from "@/lib/product-filters";
 import { BrandLink } from "./BrandLink";
 import { CompareToggle } from "./CompareToggle";
@@ -22,6 +22,10 @@ export function ProductCard({
   showLike = true,
 }: ProductCardProps) {
   const saved = product.old_price - product.current_price;
+  const discount =
+    product.discount_percent > 0
+      ? product.discount_percent
+      : savingsPercent(product.current_price, product.old_price);
   const atLowest = product.is_at_lowest;
   const nearLow =
     !atLowest &&
@@ -54,9 +58,9 @@ export function ProductCard({
               Near low
             </span>
           )}
-          {product.discount_percent > 0 && (
+          {discount > 0 && (
             <span className="rounded-full bg-gl-red px-2 py-0.5 text-[10px] font-semibold text-white sm:px-2.5 sm:py-1 sm:text-xs">
-              {product.discount_percent}% OFF
+              {discount}% OFF
             </span>
           )}
           </div>

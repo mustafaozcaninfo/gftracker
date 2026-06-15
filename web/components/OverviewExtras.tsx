@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { MetaData } from "@/lib/data";
+import type { DashboardMeta } from "@/lib/types";
 import type { PriceDrop } from "@/lib/types";
 import { formatQAR } from "@/lib/format";
 import { productDetailHref } from "@/lib/product-filters";
@@ -8,7 +8,7 @@ import { OverviewQuickFilters } from "./OverviewQuickFilters";
 import { RecentRunsList } from "./RecentRunsList";
 
 interface OverviewExtrasProps {
-  meta: MetaData;
+  meta: DashboardMeta;
   drops: PriceDrop[];
 }
 

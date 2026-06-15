@@ -49,7 +49,6 @@ export interface FilterFacets {
   sizes: string[];
   hasOneSize: boolean;
   hasMultiSize: boolean;
-  matchCount: number;
 }
 
 export function deriveFilterFacets(
@@ -65,9 +64,6 @@ export function deriveFilterFacets(
   );
   const forSize = products.filter((p) =>
     productMatchesFilters(p, filters, searchQuery, "size"),
-  );
-  const matched = products.filter((p) =>
-    productMatchesFilters(p, filters, searchQuery),
   );
 
   const brands = [...new Set(forBrand.map((p) => p.brand).filter(Boolean))].sort(
@@ -88,7 +84,6 @@ export function deriveFilterFacets(
     sizes: sizeLabels,
     hasOneSize: forSize.some((p) => p.is_one_size === true),
     hasMultiSize: forSize.some((p) => (p.sizes?.length ?? 0) > 1),
-    matchCount: matched.length,
   };
 }
 
@@ -100,16 +95,6 @@ export function isSizeAvailable(
   if (size === SIZE_FILTER_ONE) return facets.hasOneSize;
   if (size === SIZE_FILTER_MULTI) return facets.hasMultiSize;
   return facets.sizes.includes(size);
-}
-
-export function isGenderAvailable(gender: string, facets: FilterFacets): boolean {
-  if (gender === "all") return true;
-  return facets.genders.includes(gender);
-}
-
-export function isBrandAvailable(brand: string, facets: FilterFacets): boolean {
-  if (brand === "all") return true;
-  return facets.brands.includes(brand);
 }
 
 /** True if brand exists anywhere in the loaded catalog (for URL deep links). */

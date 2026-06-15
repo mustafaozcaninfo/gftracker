@@ -2,13 +2,30 @@ import { readFile } from "fs/promises";
 import path from "path";
 import { resolveProductDetail } from "./product-detail";
 import type {
+  BestDealsExport,
+  BiggestDropsExport,
   BrandStats,
-  DashboardStats,
+  BrandStatsExport,
+  DashboardMeta,
+  NewProductsData,
+  NewProductsExport,
   PriceChange,
+  PriceChangesExport,
   PriceDrop,
+  PriceHistoriesExport,
   Product,
-  ScrapeRun,
-  SoldProduct,
+  ProductDetailData,
+  ProductsCatalogExport,
+  SoldProductsExport,
+} from "./types";
+
+export type {
+  DashboardMeta,
+  MetaData,
+  NewProductsData,
+  ProductDetailData,
+  ProductsCatalogExport,
+  SoldProductsExport,
 } from "./types";
 
 const DATA_DIR = path.join(process.cwd(), "public", "data");
@@ -18,15 +35,7 @@ async function readJson<T>(filename: string): Promise<T> {
   return JSON.parse(raw) as T;
 }
 
-export interface MetaData {
-  generated_at: string;
-  source: string;
-  stats: DashboardStats;
-  brands: string[];
-  scrape_history?: ScrapeRun[];
-}
-
-const emptyStats: DashboardStats = {
+const emptyStats: DashboardMeta["stats"] = {
   total_products: 0,
   total_pages: 0,
   pages_scraped: 0,
@@ -42,9 +51,18 @@ const emptyStats: DashboardStats = {
   sold_total: 0,
 };
 
-export async function loadMeta(): Promise<MetaData> {
+const emptyCatalog: ProductsCatalogExport = {
+  products: [],
+  brands: [],
+  sizes: [],
+  size_counts: {},
+  genders: [],
+  gender_counts: {},
+};
+
+export async function loadMeta(): Promise<DashboardMeta> {
   try {
-    return await readJson<MetaData>("meta.json");
+    return await readJson<DashboardMeta>("meta.json");
   } catch {
     return {
       generated_at: new Date().toISOString(),
@@ -57,26 +75,16 @@ export async function loadMeta(): Promise<MetaData> {
 
 export async function loadBestDeals(): Promise<Product[]> {
   try {
-    const data = await readJson<{ best_deals: Product[] }>("best_deals.json");
+    const data = await readJson<BestDealsExport>("best_deals.json");
     return data.best_deals;
   } catch {
     return [];
   }
 }
 
-export interface NewProductsData {
-  products: Product[];
-  window_hours: number;
-  new_products_48h: number;
-}
-
 export async function loadNewProducts(): Promise<NewProductsData> {
   try {
-    const data = await readJson<{
-      new_products: Product[];
-      window_hours?: number;
-      new_products_48h?: number;
-    }>("new_products.json");
+    const data = await readJson<NewProductsExport>("new_products.json");
     return {
       products: data.new_products ?? [],
       window_hours: data.window_hours ?? 168,
@@ -87,29 +95,9 @@ export async function loadNewProducts(): Promise<NewProductsData> {
   }
 }
 
-export interface ProductsCatalogData {
-  products: Product[];
-  brands: string[];
-  sizes: string[];
-  size_counts: Record<string, number>;
-  genders: string[];
-  gender_counts: Record<string, number>;
-}
-
-const emptyCatalog: ProductsCatalogData = {
-  products: [],
-  brands: [],
-  sizes: [],
-  size_counts: {},
-  genders: [],
-  gender_counts: {},
-};
-
-export async function loadProductsCatalog(): Promise<ProductsCatalogData> {
+export async function loadProductsCatalog(): Promise<ProductsCatalogExport> {
   try {
-    const data = await readJson<
-      Partial<ProductsCatalogData> & { products?: Product[] }
-    >("products.json");
+    const data = await readJson<Partial<ProductsCatalogExport>>("products.json");
     return {
       products: data.products ?? [],
       brands: data.brands ?? [],
@@ -121,12 +109,6 @@ export async function loadProductsCatalog(): Promise<ProductsCatalogData> {
   } catch {
     return emptyCatalog;
   }
-}
-
-export interface ProductDetailData {
-  product: Product | null;
-  sold: SoldProduct | null;
-  history: Array<[string, number, number]>;
 }
 
 export async function loadProductDetail(productId: string): Promise<ProductDetailData> {
@@ -143,9 +125,7 @@ export async function loadProductDetail(productId: string): Promise<ProductDetai
 
   let history: Array<[string, number, number]> = [];
   try {
-    const historyData = await readJson<{
-      histories?: Record<string, Array<[string, number, number]>>;
-    }>("price_histories.json");
+    const historyData = await readJson<PriceHistoriesExport>("price_histories.json");
     history = historyData.histories?.[productId] ?? [];
   } catch {
     history = [];
@@ -159,10 +139,9 @@ export async function loadCatalogCounts(): Promise<{
   genderCount: number;
 }> {
   try {
-    const data = await readJson<{
-      sizes?: string[];
-      genders?: string[];
-    }>("products.json");
+    const data = await readJson<Pick<ProductsCatalogExport, "sizes" | "genders">>(
+      "products.json",
+    );
     return {
       sizeCount: data.sizes?.length ?? 0,
       genderCount: data.genders?.length ?? 0,
@@ -174,24 +153,16 @@ export async function loadCatalogCounts(): Promise<{
 
 export async function loadBiggestDrops(): Promise<PriceDrop[]> {
   try {
-    const data = await readJson<{ biggest_drops: PriceDrop[] }>("biggest_drops.json");
+    const data = await readJson<BiggestDropsExport>("biggest_drops.json");
     return data.biggest_drops;
   } catch {
     return [];
   }
 }
 
-export interface SoldProductsData {
-  sold_recent: SoldProduct[];
-  sold_all: SoldProduct[];
-  sold_recent_24h: number;
-  sold_recent_48h: number;
-  sold_total: number;
-}
-
-export async function loadSoldProducts(): Promise<SoldProductsData> {
+export async function loadSoldProducts(): Promise<SoldProductsExport> {
   try {
-    return await readJson<SoldProductsData>("sold_products.json");
+    return await readJson<SoldProductsExport>("sold_products.json");
   } catch {
     return {
       sold_recent: [],
@@ -205,9 +176,7 @@ export async function loadSoldProducts(): Promise<SoldProductsData> {
 
 export async function loadPriceChanges(): Promise<PriceChange[]> {
   try {
-    const data = await readJson<{ price_changes: PriceChange[] }>(
-      "price_changes.json",
-    );
+    const data = await readJson<PriceChangesExport>("price_changes.json");
     return data.price_changes;
   } catch {
     return [];
@@ -216,9 +185,7 @@ export async function loadPriceChanges(): Promise<PriceChange[]> {
 
 export async function loadBrandStats(): Promise<Record<string, BrandStats>> {
   try {
-    const data = await readJson<{ brands: Record<string, BrandStats> }>(
-      "brand_stats.json",
-    );
+    const data = await readJson<BrandStatsExport>("brand_stats.json");
     return data.brands ?? {};
   } catch {
     return {};

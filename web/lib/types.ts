@@ -96,14 +96,73 @@ export interface DashboardStats {
   sold_total?: number;
 }
 
-export interface DashboardData {
+/** Contents of `public/data/meta.json`. */
+export interface DashboardMeta {
   generated_at: string;
   source: string;
   stats: DashboardStats;
   brands: string[];
-  products: Product[];
-  price_changes: PriceChange[];
-  new_products: Product[];
-  best_deals: Product[];
   scrape_history?: ScrapeRun[];
+}
+
+/** @deprecated Use `DashboardMeta`. */
+export type MetaData = DashboardMeta;
+
+/** Contents of `public/data/products.json`. */
+export interface ProductsCatalogExport {
+  products: Product[];
+  brands: string[];
+  sizes: string[];
+  size_counts: Record<string, number>;
+  genders: string[];
+  gender_counts: Record<string, number>;
+}
+
+/** Normalized new-products payload for the dashboard page. */
+export interface NewProductsData {
+  products: Product[];
+  window_hours: number;
+  new_products_48h: number;
+}
+
+/** Contents of `public/data/new_products.json`. */
+export interface NewProductsExport {
+  new_products: Product[];
+  window_hours?: number;
+  new_products_48h?: number;
+}
+
+/** Contents of `public/data/sold_products.json`. */
+export interface SoldProductsExport {
+  sold_recent: SoldProduct[];
+  sold_all: SoldProduct[];
+  sold_recent_24h: number;
+  sold_recent_48h: number;
+  sold_total: number;
+}
+
+export interface BestDealsExport {
+  best_deals: Product[];
+}
+
+export interface PriceChangesExport {
+  price_changes: PriceChange[];
+}
+
+export interface BiggestDropsExport {
+  biggest_drops: PriceDrop[];
+}
+
+export interface BrandStatsExport {
+  brands: Record<string, BrandStats>;
+}
+
+export interface PriceHistoriesExport {
+  histories?: Record<string, Array<[string, number, number]>>;
+}
+
+export interface ProductDetailData {
+  product: Product | null;
+  sold: SoldProduct | null;
+  history: Array<[string, number, number]>;
 }
