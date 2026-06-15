@@ -20,6 +20,9 @@ from models import Product
 
 logger = logging.getLogger(__name__)
 
+RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504})
+SESSION_RESET_STATUSES = frozenset({502, 503, 504})
+
 DISCOUNT_PATTERN = re.compile(r"(\d+)\s*%\s*Off", re.IGNORECASE)
 PRICE_AMOUNT_PATTERN = re.compile(r"data-price-amount=\"([\d.]+)\"")
 JSON_CONFIG_PATTERN = re.compile(r'"jsonConfig"\s*:\s*(\{.*?\})\s*,\s*"jsonSwatchConfig"', re.DOTALL)
@@ -51,6 +54,7 @@ class StealthSession:
         self.max_rate_limit = float(scraper_cfg.get("max_rate_limit", 6.0))
         self.max_retries = int(scraper_cfg.get("max_retries", 3))
         self.retry_backoff = float(scraper_cfg.get("retry_backoff", 2.0))
+        self.retry_max_wait = float(scraper_cfg.get("retry_max_wait", 90.0))
         self.timeout = int(scraper_cfg.get("timeout", 30))
 
         self.proxies = config.get("proxies") or []
@@ -92,9 +96,33 @@ class StealthSession:
         jitter = random.uniform(self.min_delay, self.max_delay)
         time.sleep(jitter)
 
+    def reset(self) -> None:
+        """Drop cookies/connection state after upstream overload errors."""
+        self._session.close()
+        self._session = requests.Session()
+        self._referer = self.base_url + "/"
+
+    def _backoff_seconds(self, attempt: int, status_code: int | None) -> float:
+        base = self.retry_backoff
+        if status_code in RETRYABLE_STATUSES:
+            base *= 2
+        delay = base * (2 ** (attempt - 1))
+        return min(self.retry_max_wait, delay) + random.uniform(0.5, 2.5)
+
+    def _parse_retry_after(self, response: requests.Response) -> float | None:
+        raw = response.headers.get("Retry-After")
+        if not raw:
+            return None
+        try:
+            return max(0.0, float(raw))
+        except ValueError:
+            return None
+
     def get(self, url: str, *, ajax: bool = False) -> str | None:
         self._wait_before_request()
 
+        last_status: int | None = None
+        response: requests.Response | None = None
         for attempt in range(1, self.max_retries + 1):
             headers = self._build_headers()
             if ajax:
@@ -114,6 +142,7 @@ class StealthSession:
                 if response.status_code == 200:
                     return response.text
 
+                last_status = response.status_code
                 logger.warning(
                     "HTTP %s for %s (attempt %s/%s)",
                     response.status_code,
@@ -121,6 +150,8 @@ class StealthSession:
                     attempt,
                     self.max_retries,
                 )
+                if last_status in SESSION_RESET_STATUSES:
+                    self.reset()
             except requests.RequestException as exc:
                 logger.warning(
                     "Request failed for %s (attempt %s/%s): %s",
@@ -129,9 +160,17 @@ class StealthSession:
                     self.max_retries,
                     exc,
                 )
+                self.reset()
 
             if attempt < self.max_retries:
-                backoff = self.retry_backoff * attempt + random.uniform(0.5, 1.5)
+                retry_after = None
+                if response is not None and last_status == 429:
+                    retry_after = self._parse_retry_after(response)
+                backoff = retry_after if retry_after is not None else self._backoff_seconds(
+                    attempt,
+                    last_status,
+                )
+                logger.info("Retrying in %.1fs", backoff)
                 time.sleep(backoff)
 
         return None
@@ -147,6 +186,9 @@ class OfferScraper:
         self.offer_path = config.get("offer_path", "/offer.html")
         self.offer_params = dict(config.get("offer_params") or {})
         self.max_pages = int(config.get("max_pages") or 0)
+        scraper_cfg = config.get("scraper") or {}
+        self.recovery_waves = int(scraper_cfg.get("recovery_waves", 2))
+        self.recovery_cooldown = float(scraper_cfg.get("recovery_cooldown", 45.0))
         self.session = StealthSession(config)
 
     def build_page_url(self, page: int) -> str:
@@ -163,6 +205,31 @@ class OfferScraper:
         if raw is None:
             return None
         return self._normalize_page_html(raw, page=page)
+
+    def fetch_page_resilient(self, page: int) -> str | None:
+        """Fetch with extra cooldown waves — critical for page 1 when the store returns 503."""
+        html = self.fetch_page(page)
+        if html is not None:
+            return html
+        if page != 1 or self.recovery_waves <= 0:
+            return None
+
+        for wave in range(1, self.recovery_waves + 1):
+            wait = self.recovery_cooldown * wave
+            logger.warning(
+                "Page %s still unavailable; recovery wave %s/%s after %.0fs cooldown",
+                page,
+                wave,
+                self.recovery_waves,
+                wait,
+            )
+            time.sleep(wait)
+            self.session.reset()
+            html = self.fetch_page(page)
+            if html is not None:
+                logger.info("Page %s recovered on wave %s", page, wave)
+                return html
+        return None
 
     @staticmethod
     def _normalize_page_html(raw: str, page: int) -> str:
@@ -479,7 +546,7 @@ class OfferScraper:
 
     def iter_pages(self) -> Any:
         """Yield (page_number, products, total_pages) for each scraped page."""
-        first_html = self.fetch_page(1)
+        first_html = self.fetch_page_resilient(1)
         if not first_html:
             raise RuntimeError("Failed to fetch first offer page")
 

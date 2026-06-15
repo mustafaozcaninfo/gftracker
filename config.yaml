@@ -20,9 +20,12 @@ scraper:
   max_delay: 0.35
   min_rate_limit: 0.15
   max_rate_limit: 0.45
-  max_retries: 5
-  retry_backoff: 2.0
-  timeout: 30
+  max_retries: 8
+  retry_backoff: 3.0
+  retry_max_wait: 90
+  recovery_waves: 3
+  recovery_cooldown: 60
+  timeout: 45
 
 proxies: []
 # Example:
