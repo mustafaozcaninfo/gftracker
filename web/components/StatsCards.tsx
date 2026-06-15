@@ -12,7 +12,7 @@ const PRIMARY: {
   suffix?: string;
 }[] = [
   { key: "total_products", label: "In catalog", hint: "Active offer items" },
-  { key: "new_products_48h", label: "New (48h)", hint: "First seen on offer" },
+  { key: "new_products_48h", label: "New (48h)", hint: "Newly listed on offer" },
   { key: "drops_today", label: "Drops today", hint: "Price cuts logged" },
   { key: "max_discount", label: "Top discount", hint: "Highest % off now", suffix: "%" },
 ];

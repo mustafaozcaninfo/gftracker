@@ -40,7 +40,7 @@ export function NewProductsGrid({
         </p>
         <h2 className="font-display text-xl sm:text-2xl">New on the offer</h2>
         <p className="mt-1 text-sm text-neutral-600">
-          First seen in the last {windowDays} days · {count48h.toLocaleString()} in
+          Newly listed in the last {windowDays} days · {count48h.toLocaleString()} in
           the last 48h · showing {visible.length} of {products.length}
         </p>
       </div>

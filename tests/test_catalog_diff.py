@@ -79,6 +79,34 @@ class CatalogDiffTests(unittest.TestCase):
         self.assertEqual(diff["removed"], 1)
         self.assertEqual(diff["baseline"], f"snapshot:{prev_run}")
 
+    def test_catalog_diff_records_additions_for_new_ids(self) -> None:
+        for pid in ("keep", "newbie"):
+            _insert_product(self.store, pid)
+        run_id = self.store.start_scrape_run(total_pages=1)
+
+        diff = self.store.apply_catalog_diff(
+            previous_ids={"keep"},
+            current_ids={"keep", "newbie"},
+            run_id=run_id,
+            baseline="snapshot:1",
+        )
+
+        self.assertEqual(diff["additions_recorded"], 1)
+        with self.store._connect() as conn:
+            row = conn.execute(
+                "SELECT product_id FROM catalog_additions WHERE product_id = ?",
+                ("newbie",),
+            ).fetchone()
+        self.assertIsNotNone(row)
+
+        repeat = self.store.apply_catalog_diff(
+            previous_ids={"keep"},
+            current_ids={"keep", "newbie"},
+            run_id=run_id,
+            baseline="snapshot:2",
+        )
+        self.assertEqual(repeat["additions_recorded"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

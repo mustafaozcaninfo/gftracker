@@ -10,6 +10,10 @@ price_changes   One row per product per Qatar calendar day; updated on each intr
 
 Sold/gone: compare previous completed catalog_snapshot vs current full scrape;
 only IDs in previous-but-not-current are marked inactive.
+
+New on offer: catalog_additions records IDs that appear in a run-to-run diff
+(not first DB insert). Bootstrap baseline is skipped so initial catalog load
+does not flood "new products".
 """
 
 from __future__ import annotations
@@ -72,7 +76,7 @@ class ScrapeStats:
 
 
 class ProductStore:
-    SCHEMA_VERSION = 2
+    SCHEMA_VERSION = 3
 
     def __init__(self, db_path: str | Path) -> None:
         self.db_path = Path(db_path)
@@ -161,6 +165,17 @@ class ProductStore:
                     ON price_changes(product_id, price_date);
                 CREATE INDEX IF NOT EXISTS idx_scrape_runs_date
                     ON scrape_runs(run_date);
+
+                CREATE TABLE IF NOT EXISTS catalog_additions (
+                    product_id TEXT PRIMARY KEY,
+                    listed_at TEXT NOT NULL,
+                    scrape_run_id INTEGER NOT NULL,
+                    FOREIGN KEY (product_id) REFERENCES products(product_id),
+                    FOREIGN KEY (scrape_run_id) REFERENCES scrape_runs(id)
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_catalog_additions_listed
+                    ON catalog_additions(listed_at);
                 """
             )
             conn.execute(
@@ -493,6 +508,9 @@ class ProductStore:
         removed_ids = previous_ids - current_ids
         added_ids = current_ids - previous_ids
         now = datetime.now().isoformat(timespec="seconds")
+        additions_recorded = self._record_catalog_additions(
+            added_ids, run_id=run_id, baseline=baseline
+        )
 
         with self._connect() as conn:
             if removed_ids:
@@ -529,7 +547,34 @@ class ProductStore:
             "current_size": len(current_ids),
             "removed": len(removed_ids),
             "added": len(added_ids),
+            "additions_recorded": additions_recorded,
         }
+
+    def _record_catalog_additions(
+        self,
+        added_ids: set[str],
+        *,
+        run_id: int,
+        baseline: str,
+    ) -> int:
+        """Log products that newly appeared on the offer vs the previous snapshot."""
+        if baseline in {"active_db_bootstrap", "none"} or not added_ids:
+            return 0
+
+        listed_at = datetime.now(QATAR_TZ).isoformat(timespec="seconds")
+        recorded = 0
+        with self._connect() as conn:
+            for product_id in sorted(added_ids):
+                cursor = conn.execute(
+                    """
+                    INSERT OR IGNORE INTO catalog_additions (
+                        product_id, listed_at, scrape_run_id
+                    ) VALUES (?, ?, ?)
+                    """,
+                    (product_id, listed_at, run_id),
+                )
+                recorded += cursor.rowcount
+        return recorded
 
     def finalize_scrape_catalog(
         self,
@@ -868,8 +913,9 @@ class ProductStore:
             row = conn.execute(
                 """
                 SELECT COUNT(*) AS c
-                FROM products
-                WHERE is_active = 1 AND first_seen_at >= ?
+                FROM catalog_additions ca
+                INNER JOIN products p ON p.product_id = ca.product_id
+                WHERE p.is_active = 1 AND ca.listed_at >= ?
                 """,
                 (cutoff,),
             ).fetchone()
@@ -882,17 +928,18 @@ class ProductStore:
         min_discount: int = 0,
         limit: int = 300,
     ) -> list[dict[str, Any]]:
-        """Products first seen on the offer within the recent window (Qatar time)."""
+        """Products that appeared on the offer via catalog diff within the window."""
         cutoff = self._hours_ago_qatar(recent_hours)
         analytics = {p["product_id"]: p for p in self.get_products_with_analytics()}
 
         with self._connect() as conn:
             rows = conn.execute(
                 """
-                SELECT product_id, first_seen_at
-                FROM products
-                WHERE is_active = 1 AND first_seen_at >= ?
-                ORDER BY first_seen_at DESC
+                SELECT ca.product_id, ca.listed_at
+                FROM catalog_additions ca
+                INNER JOIN products p ON p.product_id = ca.product_id
+                WHERE p.is_active = 1 AND ca.listed_at >= ?
+                ORDER BY ca.listed_at DESC
                 """,
                 (cutoff,),
             ).fetchall()
@@ -906,7 +953,7 @@ class ProductStore:
             if discount < min_discount:
                 continue
             item = dict(base)
-            item["first_seen_at"] = row["first_seen_at"]
+            item["first_seen_at"] = row["listed_at"]
             results.append(item)
             if len(results) >= limit:
                 break
