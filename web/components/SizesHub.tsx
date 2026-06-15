@@ -23,7 +23,7 @@ const POPULAR = [
 ];
 
 export function SizesHub() {
-  const { sizeCounts, loading } = useProductsCatalog();
+  const { sizeCounts, loading, error } = useProductsCatalog();
   const [query, setQuery] = useState("");
 
   const entries = useMemo(() => {
@@ -45,6 +45,22 @@ export function SizesHub() {
     return (
       <p className="rounded-2xl border border-black/10 bg-white p-8 text-center text-neutral-500">
         Loading sizes…
+      </p>
+    );
+  }
+
+  if (error) {
+    return (
+      <p className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-red-700">
+        {error}
+      </p>
+    );
+  }
+
+  if (Object.keys(sizeCounts).length === 0) {
+    return (
+      <p className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center text-neutral-500">
+        No size data available yet. Check back after the next scrape.
       </p>
     );
   }

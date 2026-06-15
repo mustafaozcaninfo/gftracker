@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { loadMeta } from "@/lib/data";
+import { loadBrandStats, loadMeta } from "@/lib/data";
 import { pageMetadata } from "@/lib/metadata";
 import { PageShell } from "@/components/PageShell";
 import { BrandsGrid } from "@/components/BrandsGrid";
@@ -7,10 +7,12 @@ import { BrandsGrid } from "@/components/BrandsGrid";
 export const metadata = pageMetadata(
   "Brands",
   "Browse offer products grouped by brand with average and max discounts.",
+  "/brands",
 );
 
 export default async function BrandsPage() {
-  const meta = await loadMeta();
+  const [meta, brandStats] = await Promise.all([loadMeta(), loadBrandStats()]);
+  const brandCount = Object.keys(brandStats).length || meta.brands.length;
 
   return (
     <PageShell
@@ -26,8 +28,8 @@ export default async function BrandsPage() {
           </p>
           <h2 className="font-display text-xl sm:text-2xl">Brands</h2>
           <p className="mt-1 text-sm text-neutral-600">
-            {meta.brands.length.toLocaleString()} brands with product counts and
-            discount stats
+            {brandCount.toLocaleString()} brands with product counts and discount
+            stats
           </p>
         </div>
         <Suspense

@@ -6,6 +6,7 @@ import { ProductCard } from "@/components/ProductCard";
 export const metadata = pageMetadata(
   "Best Deals",
   "Highest discount percentages on the Galeries Lafayette Qatar offer page.",
+  "/best-deals",
 );
 
 export default async function BestDealsPage() {
@@ -25,15 +26,21 @@ export default async function BestDealsPage() {
           </p>
           <h2 className="font-display text-xl sm:text-2xl">Today&apos;s Best Discounts</h2>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-          {deals.map((product, index) => (
-            <ProductCard
-              key={product.product_id}
-              product={product}
-              rank={index + 1}
-            />
-          ))}
-        </div>
+        {deals.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center text-neutral-500">
+            No deals available yet. Check back after the next scrape.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+            {deals.map((product, index) => (
+              <ProductCard
+                key={product.product_id}
+                product={product}
+                rank={index + 1}
+              />
+            ))}
+          </div>
+        )}
       </section>
     </PageShell>
   );

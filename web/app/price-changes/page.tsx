@@ -6,6 +6,7 @@ import { PriceChanges } from "@/components/PriceChanges";
 export const metadata = pageMetadata(
   "Price Changes",
   "Every logged price or discount move from hourly scrapes.",
+  "/price-changes",
 );
 
 export default async function PriceChangesPage() {
@@ -16,7 +17,6 @@ export default async function PriceChangesPage() {
       stats={meta.stats}
       source={meta.source}
       generatedAt={meta.generated_at}
-      counts={{ changes: meta.stats.drops_today ?? changes.length }}
     >
       <section className="space-y-4">
         <div>
@@ -28,7 +28,7 @@ export default async function PriceChangesPage() {
             Every logged price or discount move — drops and increases — from hourly scrapes.
           </p>
         </div>
-        <PriceChanges changes={changes} />
+        <PriceChanges changes={changes} hideHeader />
       </section>
     </PageShell>
   );

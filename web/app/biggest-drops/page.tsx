@@ -7,6 +7,7 @@ import { BiggestDropsList } from "@/components/BiggestDropsList";
 export const metadata = pageMetadata(
   "Price Drops",
   "Largest QAR price reductions from recorded changes.",
+  "/biggest-drops",
 );
 
 export default async function BiggestDropsPage() {
@@ -17,7 +18,7 @@ export default async function BiggestDropsPage() {
       stats={meta.stats}
       source={meta.source}
       generatedAt={meta.generated_at}
-      counts={{ changes: meta.stats.drops_today ?? drops.length }}
+      counts={{ changes: meta.stats.drops_today ?? 0 }}
     >
       <section className="space-y-4">
         <div>

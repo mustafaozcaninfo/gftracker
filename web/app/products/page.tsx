@@ -7,14 +7,11 @@ import { ProductGrid } from "@/components/ProductGrid";
 export const metadata = pageMetadata(
   "All Products",
   "Browse and filter the full offer catalog with brand, size, gender, and price filters.",
+  "/products",
 );
 
 function ProductsGridFallback() {
-  return (
-    <p className="rounded-2xl border border-black/10 bg-white p-12 text-center text-neutral-500">
-      Loading catalog…
-    </p>
-  );
+  return null;
 }
 
 export default async function ProductsPage() {

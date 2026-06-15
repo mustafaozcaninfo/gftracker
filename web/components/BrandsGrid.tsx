@@ -46,6 +46,7 @@ export function BrandsGrid() {
   const searchParams = useSearchParams();
   const [brands, setBrands] = useState<Record<string, BrandStats>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const sort = parseBrandSort(searchParams.get("sort"));
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
@@ -56,9 +57,15 @@ export function BrandsGrid() {
 
   useEffect(() => {
     fetch("/data/brand_stats.json")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to load brand stats");
+        return r.json();
+      })
       .then((data: { brands: Record<string, BrandStats> }) => {
         setBrands(data.brands ?? {});
+      })
+      .catch((err: Error) => {
+        setError(err.message);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -96,6 +103,22 @@ export function BrandsGrid() {
     return (
       <p className="rounded-2xl border border-black/10 bg-white p-8 text-center text-neutral-500">
         Loading brands…
+      </p>
+    );
+  }
+
+  if (error) {
+    return (
+      <p className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-red-700">
+        {error}
+      </p>
+    );
+  }
+
+  if (Object.keys(brands).length === 0) {
+    return (
+      <p className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center text-neutral-500">
+        No brand data available yet. Check back after the next scrape.
       </p>
     );
   }

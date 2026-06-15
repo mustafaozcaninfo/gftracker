@@ -6,6 +6,7 @@ import { PageShell } from "@/components/PageShell";
 export const metadata = pageMetadata(
   "New Products",
   "Products newly listed on the Galeries Lafayette Qatar offer page.",
+  "/new-products",
 );
 
 export default async function NewProductsPage() {
@@ -16,7 +17,7 @@ export default async function NewProductsPage() {
       stats={meta.stats}
       source={meta.source}
       generatedAt={meta.generated_at}
-      counts={{ new_products: meta.stats.new_products_48h }}
+      counts={{ new_products: newData.new_products_48h }}
     >
       <NewProductsGrid
         products={newData.products}

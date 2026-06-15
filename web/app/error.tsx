@@ -15,25 +15,32 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center gap-4 px-6 text-center">
-      <h1 className="font-display text-2xl">Something went wrong</h1>
-      <p className="text-sm text-neutral-600">
-        The page failed to load. You can retry or return to the overview.
-      </p>
-      <div className="flex flex-wrap justify-center gap-3">
-        <button
-          type="button"
-          onClick={reset}
-          className="inline-flex min-h-11 items-center rounded-xl bg-gl-black px-5 py-2.5 text-sm font-medium text-white"
-        >
-          Try again
-        </button>
-        <Link
-          href="/"
-          className="inline-flex min-h-11 items-center rounded-xl border border-black/10 px-5 py-2.5 text-sm font-medium"
-        >
-          Overview
+    <div className="min-h-screen bg-gl-cream">
+      <header className="border-b border-black/8 bg-gl-cream/92 px-6 py-4">
+        <Link href="/" className="font-display text-xl hover:opacity-80">
+          GF Tracker
         </Link>
+      </header>
+      <div className="mx-auto flex max-w-lg flex-col items-center justify-center gap-4 px-6 py-16 text-center">
+        <h1 className="font-display text-2xl">Something went wrong</h1>
+        <p className="text-sm text-neutral-600">
+          The page failed to load. You can retry or return to the overview.
+        </p>
+        <div className="flex flex-wrap justify-center gap-3">
+          <button
+            type="button"
+            onClick={reset}
+            className="inline-flex min-h-11 items-center rounded-xl bg-gl-black px-5 py-2.5 text-sm font-medium text-white"
+          >
+            Try again
+          </button>
+          <Link
+            href="/"
+            className="inline-flex min-h-11 items-center rounded-xl border border-black/10 px-5 py-2.5 text-sm font-medium"
+          >
+            Overview
+          </Link>
+        </div>
       </div>
     </div>
   );

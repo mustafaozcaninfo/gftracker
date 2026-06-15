@@ -22,6 +22,15 @@ export function CompareView() {
     [ids, products],
   );
 
+  const staleIds = useMemo(
+    () => ids.filter((id) => !products.some((p) => p.product_id === id)),
+    [ids, products],
+  );
+
+  const clearStale = () => {
+    staleIds.forEach((id) => remove(id));
+  };
+
   if (!ready || loading) {
     return (
       <p className="rounded-2xl border border-black/10 bg-white p-8 text-center text-neutral-500">
@@ -43,6 +52,35 @@ export function CompareView() {
         >
           Browse products
         </Link>
+      </div>
+    );
+  }
+
+  if (selected.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center">
+        <p className="text-neutral-600">
+          {staleIds.length} saved product{staleIds.length === 1 ? "" : "s"}{" "}
+          {staleIds.length === 1 ? "is" : "are"} no longer in the catalog.
+        </p>
+        <p className="mt-2 text-sm text-neutral-500">
+          They may have sold out or been removed from the offer.
+        </p>
+        <div className="mt-4 flex flex-wrap justify-center gap-3">
+          <button
+            type="button"
+            onClick={clear}
+            className="inline-flex min-h-11 items-center rounded-xl bg-gl-black px-5 py-2.5 text-sm font-medium text-white"
+          >
+            Clear compare list
+          </button>
+          <Link
+            href="/products"
+            className="inline-flex min-h-11 items-center rounded-xl border border-black/10 px-5 py-2.5 text-sm font-medium"
+          >
+            Browse products
+          </Link>
+        </div>
       </div>
     );
   }
@@ -94,6 +132,20 @@ export function CompareView() {
           Clear all
         </button>
       </div>
+
+      {staleIds.length > 0 && (
+        <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+          {staleIds.length} product{staleIds.length === 1 ? "" : "s"} no longer in
+          the catalog.{" "}
+          <button
+            type="button"
+            onClick={clearStale}
+            className="font-medium underline underline-offset-2 hover:text-amber-900"
+          >
+            Remove missing
+          </button>
+        </p>
+      )}
 
       {selected.length < 2 && (
         <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">

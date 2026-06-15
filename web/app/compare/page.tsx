@@ -6,6 +6,7 @@ import { CompareView } from "@/components/CompareView";
 export const metadata = pageMetadata(
   "Compare",
   "Side-by-side comparison of up to four liked products.",
+  "/compare",
 );
 
 export default async function ComparePage() {

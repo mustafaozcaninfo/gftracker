@@ -7,6 +7,7 @@ import { MyListTabs } from "@/components/MyListTabs";
 export const metadata = pageMetadata(
   "My List",
   "Liked products and price changes tracked on this device.",
+  "/my-list",
 );
 
 function MyListFallback() {

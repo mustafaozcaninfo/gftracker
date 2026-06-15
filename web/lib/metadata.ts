@@ -1,16 +1,21 @@
 import type { Metadata } from "next";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "./site";
 
-export function pageMetadata(title: string, description?: string): Metadata {
+export function pageMetadata(
+  title: string,
+  description?: string,
+  path?: string,
+): Metadata {
   const fullTitle = `${title} · ${SITE_NAME}`;
   const desc = description ?? SITE_DESCRIPTION;
+  const url = path ? `${SITE_URL}${path}` : SITE_URL;
   return {
     title: fullTitle,
     description: desc,
     openGraph: {
       title: fullTitle,
       description: desc,
-      url: SITE_URL,
+      url,
       siteName: SITE_NAME,
       type: "website",
     },

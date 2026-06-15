@@ -2,6 +2,7 @@ import { readFile } from "fs/promises";
 import path from "path";
 import { resolveProductDetail } from "./product-detail";
 import type {
+  BrandStats,
   DashboardStats,
   PriceChange,
   PriceDrop,
@@ -210,5 +211,16 @@ export async function loadPriceChanges(): Promise<PriceChange[]> {
     return data.price_changes;
   } catch {
     return [];
+  }
+}
+
+export async function loadBrandStats(): Promise<Record<string, BrandStats>> {
+  try {
+    const data = await readJson<{ brands: Record<string, BrandStats> }>(
+      "brand_stats.json",
+    );
+    return data.brands ?? {};
+  } catch {
+    return {};
   }
 }

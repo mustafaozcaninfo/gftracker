@@ -24,6 +24,7 @@ const FILTER_GROUPS = [
       { label: "Women", gender: "women" as const },
       { label: "Men", gender: "men" as const },
       { label: "Kids", gender: "kids" as const },
+      { label: "Unisex", gender: "unisex" as const },
     ],
   },
 ] as const;

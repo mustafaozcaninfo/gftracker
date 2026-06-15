@@ -6,6 +6,7 @@ import { SoldList } from "@/components/SoldList";
 export const metadata = pageMetadata(
   "Sold / Gone",
   "Products removed from the offer page — likely sold out or delisted.",
+  "/sold",
 );
 
 export default async function SoldPage() {

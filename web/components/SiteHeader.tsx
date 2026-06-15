@@ -40,11 +40,11 @@ export function SiteHeader({ stats, counts = {} }: SiteHeaderProps) {
 
   const countFor = (key?: CountKey) => {
     if (!key) return undefined;
-    if (key === "best_deals") return counts.best_deals ?? 20;
+    if (key === "best_deals") return counts.best_deals;
     if (key === "new_products") return counts.new_products ?? stats.new_products_48h;
     if (key === "products") return counts.products ?? stats.total_products;
-    if (key === "changes") return counts.changes ?? stats.drops_today ?? stats.price_changes_today ?? 0;
-    if (key === "sold") return stats.sold_recent_48h ?? 0;
+    if (key === "changes") return counts.changes ?? stats.drops_today ?? 0;
+    if (key === "sold") return counts.sold ?? stats.sold_recent_48h ?? 0;
     return undefined;
   };
 

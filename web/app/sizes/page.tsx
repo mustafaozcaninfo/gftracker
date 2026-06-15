@@ -6,6 +6,7 @@ import { SizesHub } from "@/components/SizesHub";
 export const metadata = pageMetadata(
   "Sizes",
   "Find products by clothing and shoe size on the Qatar offer page.",
+  "/sizes",
 );
 
 export default async function SizesPage() {
