@@ -91,6 +91,7 @@ export interface DashboardStats {
   discount_buckets?: Record<string, number>;
   high_discount_50_plus?: number;
   high_discount_60_plus?: number;
+  best_deals_count?: number;
   sold_recent_24h?: number;
   sold_recent_48h?: number;
   sold_total?: number;

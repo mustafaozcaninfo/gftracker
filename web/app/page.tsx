@@ -64,7 +64,10 @@ export default async function HomePage() {
     {
       href: "/products",
       title: "All Products",
-      desc: `Search, filter by brand, size, or one of ${catalog.genderCount} audiences`,
+      desc:
+        catalog.genderCount > 0
+          ? `Search, filter by brand, size, or one of ${catalog.genderCount} audiences`
+          : "Search, filter by brand, size, gender, and price",
       count: stats.total_products,
       countLabel: "items",
       tone: "browse",

@@ -76,7 +76,7 @@ export async function loadMeta(): Promise<DashboardMeta> {
 export async function loadBestDeals(): Promise<Product[]> {
   try {
     const data = await readJson<BestDealsExport>("best_deals.json");
-    return data.best_deals;
+    return data.best_deals ?? [];
   } catch {
     return [];
   }

@@ -96,6 +96,7 @@ def build_dashboard_payload(
         limit=NEW_PRODUCTS_EXPORT_LIMIT,
     )
     new_products_48h = store.count_new_products(recent_hours=NEW_PRODUCTS_BADGE_HOURS)
+    best_deals = store.get_today_best_deals(top_n=20)
     scrape_history = (
         merge_scrape_history(store, data_dir)
         if data_dir is not None
@@ -127,6 +128,7 @@ def build_dashboard_payload(
         "discount_buckets": discount_buckets,
         "high_discount_50_plus": sum(1 for d in discounts if d >= 50),
         "high_discount_60_plus": sum(1 for d in discounts if d >= 60),
+        "best_deals_count": len(best_deals),
         "sold_recent_24h": store.count_sold_products(recent_hours=24),
         "sold_recent_48h": store.count_sold_products(recent_hours=48),
         "sold_total": store.count_sold_products(),
@@ -140,7 +142,7 @@ def build_dashboard_payload(
         "products": products,
         "price_changes": price_changes,
         "new_products": new_products,
-        "best_deals": store.get_today_best_deals(top_n=20),
+        "best_deals": best_deals,
         "scrape_history": scrape_history,
     }
 

@@ -77,6 +77,7 @@ class ScrapeStats:
 
 class ProductStore:
     SCHEMA_VERSION = 3
+    MAX_CATALOG_ADDITIONS_PER_RUN = 200
 
     def __init__(self, db_path: str | Path) -> None:
         self.db_path = Path(db_path)
@@ -210,6 +211,21 @@ class ProductStore:
             conn.execute(
                 "ALTER TABLE scrape_runs ADD COLUMN catalog_added INTEGER NOT NULL DEFAULT 0"
             )
+
+        self._reset_bad_catalog_additions_once(conn)
+
+    def _reset_bad_catalog_additions_once(self, conn: sqlite3.Connection) -> None:
+        """Clear false-positive rows from early catalog_additions rollout."""
+        row = conn.execute(
+            "SELECT value FROM meta WHERE key = 'catalog_additions_guard_v1'"
+        ).fetchone()
+        if row:
+            return
+        conn.execute("DELETE FROM catalog_additions")
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES ('catalog_additions_guard_v1', ?)",
+            (datetime.now(QATAR_TZ).isoformat(timespec="seconds"),),
+        )
 
     @staticmethod
     def _parse_sizes_json(raw: str | None) -> list[str]:
@@ -509,7 +525,11 @@ class ProductStore:
         added_ids = current_ids - previous_ids
         now = datetime.now().isoformat(timespec="seconds")
         additions_recorded = self._record_catalog_additions(
-            added_ids, run_id=run_id, baseline=baseline
+            added_ids,
+            run_id=run_id,
+            baseline=baseline,
+            previous_ids=previous_ids,
+            current_ids=current_ids,
         )
 
         with self._connect() as conn:
@@ -550,15 +570,49 @@ class ProductStore:
             "additions_recorded": additions_recorded,
         }
 
+    @staticmethod
+    def _should_track_catalog_additions(
+        *,
+        previous_ids: set[str],
+        current_ids: set[str],
+        added_ids: set[str],
+        baseline: str,
+    ) -> bool:
+        if baseline in {"active_db_bootstrap", "none"} or not added_ids:
+            return False
+        if not previous_ids:
+            return False
+        if len(added_ids) > ProductStore.MAX_CATALOG_ADDITIONS_PER_RUN:
+            return False
+
+        current_size = len(current_ids)
+        if current_size >= 200:
+            min_previous = max(500, int(current_size * 0.85))
+            if len(previous_ids) < min_previous:
+                return False
+            if len(added_ids) > max(200, int(current_size * 0.25)):
+                return False
+        elif len(added_ids) > 50:
+            return False
+
+        return True
+
     def _record_catalog_additions(
         self,
         added_ids: set[str],
         *,
         run_id: int,
         baseline: str,
+        previous_ids: set[str],
+        current_ids: set[str],
     ) -> int:
         """Log products that newly appeared on the offer vs the previous snapshot."""
-        if baseline in {"active_db_bootstrap", "none"} or not added_ids:
+        if not self._should_track_catalog_additions(
+            previous_ids=previous_ids,
+            current_ids=current_ids,
+            added_ids=added_ids,
+            baseline=baseline,
+        ):
             return 0
 
         listed_at = datetime.now(QATAR_TZ).isoformat(timespec="seconds")

@@ -155,6 +155,39 @@ class NewProductsTests(unittest.TestCase):
 
         self.assertEqual(self.store.count_new_products(recent_hours=48), 1)
 
+    def test_empty_previous_snapshot_does_not_record_additions(self) -> None:
+        for pid in ("a", "b", "c"):
+            _insert_product_row(self.store, pid)
+
+        run_id = self.store.start_scrape_run(total_pages=1)
+        diff = self.store.apply_catalog_diff(
+            previous_ids=set(),
+            current_ids={"a", "b", "c"},
+            run_id=run_id,
+            baseline="snapshot:99",
+        )
+
+        self.assertEqual(diff["added"], 3)
+        self.assertEqual(diff["additions_recorded"], 0)
+        self.assertEqual(self.store.count_new_products(recent_hours=48), 0)
+
+    def test_bulk_additions_per_run_are_skipped(self) -> None:
+        previous = {f"p{i}" for i in range(500)}
+        current = previous | {f"new{i}" for i in range(201)}
+        for pid in current:
+            _insert_product_row(self.store, pid)
+
+        run_id = self.store.start_scrape_run(total_pages=1)
+        diff = self.store.apply_catalog_diff(
+            previous_ids=previous,
+            current_ids=current,
+            run_id=run_id,
+            baseline="snapshot:1",
+        )
+
+        self.assertEqual(diff["added"], 201)
+        self.assertEqual(diff["additions_recorded"], 0)
+
     def test_first_db_insert_without_catalog_diff_is_not_new(self) -> None:
         run_id = self.store.start_scrape_run(total_pages=1)
         self.store.record_daily_scrape([_product("only-insert")], run_id)

@@ -12,7 +12,7 @@ import { useCompare } from "./CompareProvider";
 
 export function CompareView() {
   const { ids, ready, remove, clear } = useCompare();
-  const { products, loading } = useProductsCatalog();
+  const { products, loading, error } = useProductsCatalog();
 
   const selected = useMemo(
     () =>
@@ -39,6 +39,14 @@ export function CompareView() {
     );
   }
 
+  if (error) {
+    return (
+      <p className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-red-700">
+        {error}
+      </p>
+    );
+  }
+
   if (ids.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center">
@@ -56,7 +64,7 @@ export function CompareView() {
     );
   }
 
-  if (selected.length === 0) {
+  if (selected.length === 0 && products.length > 0) {
     return (
       <div className="rounded-2xl border border-dashed border-black/20 bg-white p-8 text-center">
         <p className="text-neutral-600">

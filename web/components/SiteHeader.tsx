@@ -40,7 +40,10 @@ export function SiteHeader({ stats, counts = {} }: SiteHeaderProps) {
 
   const countFor = (key?: CountKey) => {
     if (!key) return undefined;
-    if (key === "best_deals") return counts.best_deals;
+    if (key === "best_deals") {
+      const count = counts.best_deals ?? stats.best_deals_count;
+      return count && count > 0 ? count : undefined;
+    }
     if (key === "new_products") return counts.new_products ?? stats.new_products_48h;
     if (key === "products") return counts.products ?? stats.total_products;
     if (key === "changes") return counts.changes ?? stats.drops_today ?? 0;
@@ -101,7 +104,10 @@ export function SiteHeader({ stats, counts = {} }: SiteHeaderProps) {
                 : undefined;
             const showCount =
               count !== undefined &&
-              (countKey !== "sold" && countKey !== "new_products" || count > 0) &&
+              (countKey !== "sold" &&
+                countKey !== "new_products" &&
+                countKey !== "best_deals" ||
+                count > 0) &&
               (!watchlist || count > 0);
 
             return (
