@@ -185,7 +185,7 @@ class ProductStore:
                 CREATE TABLE IF NOT EXISTS catalog_removals (
                     product_id TEXT PRIMARY KEY,
                     removed_at TEXT NOT NULL,
-                    scrape_run_id INTEGER NOT NULL,
+                    scrape_run_id INTEGER,
                     FOREIGN KEY (product_id) REFERENCES products(product_id),
                     FOREIGN KEY (scrape_run_id) REFERENCES scrape_runs(id)
                 );
@@ -240,7 +240,7 @@ class ProductStore:
         conn.execute(
             """
             INSERT OR IGNORE INTO catalog_removals (product_id, removed_at, scrape_run_id)
-            SELECT product_id, COALESCE(removed_at, last_seen_at), 0
+            SELECT product_id, COALESCE(removed_at, last_seen_at), NULL
             FROM products
             WHERE is_active = 0
             """
