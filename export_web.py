@@ -18,6 +18,10 @@ NEW_PRODUCTS_LIST_HOURS = 168
 NEW_PRODUCTS_BADGE_HOURS = 48
 NEW_PRODUCTS_EXPORT_LIMIT = 300
 
+SOLD_LIST_HOURS = 48
+SOLD_BADGE_HOURS = 48
+SOLD_EXPORT_LIMIT = 500
+
 REQUIRED_EXPORT_FILES = (
     "meta.json",
     "products.json",
@@ -181,6 +185,21 @@ def validate_export(out_dir: str | Path) -> None:
     if "sold_all" not in sold_payload or "sold_recent" not in sold_payload:
         raise ValueError("Export validation failed: sold_products.json missing sold lists")
 
+    sold_recent_count = stats.get("sold_recent_48h", 0)
+    sold_total_count = stats.get("sold_total", 0)
+    sold_recent_len = len(sold_payload.get("sold_recent") or [])
+    sold_all_len = len(sold_payload.get("sold_all") or [])
+    if sold_recent_len < sold_recent_count:
+        raise ValueError(
+            "Export validation failed: sold_recent list shorter than sold_recent_48h "
+            f"({sold_recent_len} < {sold_recent_count})"
+        )
+    if sold_all_len < sold_total_count:
+        raise ValueError(
+            "Export validation failed: sold_all list shorter than sold_total "
+            f"({sold_all_len} < {sold_total_count})"
+        )
+
     products = products_payload.get("products") or []
     if products:
         with_price = sum(1 for p in products if p.get("current_price") is not None)
@@ -289,16 +308,22 @@ def export_dashboard(
         encoding="utf-8",
     )
 
-    sold_recent = store.get_sold_products(limit=100, recent_hours=48)
-    sold_all = store.get_sold_products(limit=200)
+    sold_recent_48h = store.count_sold_products(recent_hours=SOLD_BADGE_HOURS)
+    sold_total = store.count_sold_products()
+    sold_recent = store.get_sold_products(
+        limit=max(sold_recent_48h, SOLD_EXPORT_LIMIT),
+        recent_hours=SOLD_LIST_HOURS,
+    )
+    sold_all = store.get_sold_products(limit=max(sold_total, SOLD_EXPORT_LIMIT))
     (out_dir / "sold_products.json").write_text(
         json.dumps(
             {
                 "sold_recent": sold_recent,
                 "sold_all": sold_all,
+                "window_hours": SOLD_LIST_HOURS,
                 "sold_recent_24h": payload["stats"]["sold_recent_24h"],
-                "sold_recent_48h": payload["stats"]["sold_recent_48h"],
-                "sold_total": payload["stats"]["sold_total"],
+                "sold_recent_48h": sold_recent_48h,
+                "sold_total": sold_total,
             },
             ensure_ascii=False,
         ),

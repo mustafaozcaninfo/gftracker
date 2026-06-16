@@ -133,10 +133,20 @@ export interface NewProductsExport {
   new_products_48h?: number;
 }
 
+/** Normalized sold-products payload for the dashboard page. */
+export interface SoldProductsData {
+  soldRecent: SoldProduct[];
+  soldAll: SoldProduct[];
+  windowHours: number;
+  soldRecent48h: number;
+  soldTotal: number;
+}
+
 /** Contents of `public/data/sold_products.json`. */
 export interface SoldProductsExport {
   sold_recent: SoldProduct[];
   sold_all: SoldProduct[];
+  window_hours?: number;
   sold_recent_24h: number;
   sold_recent_48h: number;
   sold_total: number;

@@ -33,6 +33,7 @@ export default async function SoldPage() {
         <SoldList
           soldRecent={sold.sold_recent}
           soldAll={sold.sold_all}
+          windowHours={sold.window_hours ?? 48}
           soldRecent48h={sold.sold_recent_48h}
           soldTotal={sold.sold_total}
         />

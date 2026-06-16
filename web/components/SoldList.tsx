@@ -10,9 +10,12 @@ import { BrandLink } from "./BrandLink";
 
 type SoldTab = "recent" | "all";
 
+const PAGE_SIZE = 24;
+
 interface SoldListProps {
   soldRecent: SoldProduct[];
   soldAll: SoldProduct[];
+  windowHours: number;
   soldRecent48h: number;
   soldTotal: number;
 }
@@ -20,18 +23,22 @@ interface SoldListProps {
 export function SoldList({
   soldRecent,
   soldAll,
+  windowHours,
   soldRecent48h,
   soldTotal,
 }: SoldListProps) {
   const [tab, setTab] = useState<SoldTab>("recent");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const items = tab === "recent" ? soldRecent : soldAll;
+  const tabTotal = tab === "recent" ? soldRecent48h : soldTotal;
+  const visible = items.slice(0, visibleCount);
 
   const emptyMessage = useMemo(() => {
     if (tab === "recent") {
-      return "No products removed from the offer in the last 48 hours.";
+      return `No products removed from the offer in the last ${windowHours} hours.`;
     }
     return "No sold / removed products recorded yet. They appear after an hourly scrape detects missing items.";
-  }, [tab]);
+  }, [tab, windowHours]);
 
   if (!soldRecent.length && !soldAll.length) {
     return (
@@ -43,17 +50,23 @@ export function SoldList({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 text-sm text-neutral-600">
-        <span>{soldRecent48h.toLocaleString()} gone in 48h (Qatar time)</span>
-        <span className="text-neutral-300">·</span>
-        <span>{soldTotal.toLocaleString()} total removed from offer</span>
-      </div>
+      <p className="text-sm text-neutral-600">
+        {soldRecent48h.toLocaleString()} gone in {windowHours}h (Qatar time) ·{" "}
+        {soldTotal.toLocaleString()} total removed · showing {visible.length} of{" "}
+        {items.length}
+        {tabTotal > items.length && (
+          <span className="text-neutral-400">
+            {" "}
+            ({tabTotal.toLocaleString()} tracked)
+          </span>
+        )}
+      </p>
 
       <div className="flex gap-2" role="tablist" aria-label="Sold product views">
         {(
           [
-            { key: "recent" as const, label: "Last 48h", count: soldRecent.length },
-            { key: "all" as const, label: "All sold", count: soldAll.length },
+            { key: "recent" as const, label: `Last ${windowHours}h`, count: soldRecent48h },
+            { key: "all" as const, label: "All sold", count: soldTotal },
           ] as const
         ).map(({ key, label, count }) => (
           <button
@@ -63,7 +76,10 @@ export function SoldList({
             id={`sold-tab-${key}`}
             aria-controls={`sold-panel-${key}`}
             aria-selected={tab === key}
-            onClick={() => setTab(key)}
+            onClick={() => {
+              setTab(key);
+              setVisibleCount(PAGE_SIZE);
+            }}
             className={`inline-flex min-h-10 items-center rounded-full px-4 py-2 text-sm font-medium transition ${
               tab === key
                 ? "bg-gl-black text-white"
@@ -71,7 +87,7 @@ export function SoldList({
             }`}
           >
             {label}
-            {count > 0 && <span className="ml-1.5 opacity-70">({count})</span>}
+            {count > 0 && <span className="ml-1.5 opacity-70">({count.toLocaleString()})</span>}
           </button>
         ))}
       </div>
@@ -86,11 +102,24 @@ export function SoldList({
             {emptyMessage}
           </p>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((item) => (
-              <SoldCard key={item.product_id} item={item} />
-            ))}
-          </div>
+          <>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {visible.map((item) => (
+                <SoldCard key={item.product_id} item={item} />
+              ))}
+            </div>
+            {visibleCount < items.length && (
+              <div className="flex justify-center pt-4">
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+                  className="min-h-11 w-full rounded-xl bg-gl-black px-6 py-3 text-sm font-medium text-white hover:bg-neutral-800 sm:w-auto"
+                >
+                  Load more
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

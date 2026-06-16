@@ -14,6 +14,9 @@ only IDs in previous-but-not-current are marked inactive.
 New on offer: catalog_additions records IDs that appear in a run-to-run diff
 (not first DB insert). Bootstrap baseline is skipped so initial catalog load
 does not flood "new products".
+
+Sold/gone events: catalog_removals records IDs removed in a run-to-run diff.
+Bulk or bootstrap diffs are skipped so false positives do not flood sold lists.
 """
 
 from __future__ import annotations
@@ -76,8 +79,9 @@ class ScrapeStats:
 
 
 class ProductStore:
-    SCHEMA_VERSION = 3
+    SCHEMA_VERSION = 4
     MAX_CATALOG_ADDITIONS_PER_RUN = 200
+    MAX_CATALOG_REMOVALS_PER_RUN = 200
 
     def __init__(self, db_path: str | Path) -> None:
         self.db_path = Path(db_path)
@@ -177,6 +181,17 @@ class ProductStore:
 
                 CREATE INDEX IF NOT EXISTS idx_catalog_additions_listed
                     ON catalog_additions(listed_at);
+
+                CREATE TABLE IF NOT EXISTS catalog_removals (
+                    product_id TEXT PRIMARY KEY,
+                    removed_at TEXT NOT NULL,
+                    scrape_run_id INTEGER NOT NULL,
+                    FOREIGN KEY (product_id) REFERENCES products(product_id),
+                    FOREIGN KEY (scrape_run_id) REFERENCES scrape_runs(id)
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_catalog_removals_removed
+                    ON catalog_removals(removed_at);
                 """
             )
             conn.execute(
@@ -213,6 +228,27 @@ class ProductStore:
             )
 
         self._reset_bad_catalog_additions_once(conn)
+        self._backfill_catalog_removals_once(conn)
+
+    def _backfill_catalog_removals_once(self, conn: sqlite3.Connection) -> None:
+        """Seed removal events from legacy is_active=0 rows (one-time)."""
+        row = conn.execute(
+            "SELECT value FROM meta WHERE key = 'catalog_removals_backfill_v1'"
+        ).fetchone()
+        if row:
+            return
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO catalog_removals (product_id, removed_at, scrape_run_id)
+            SELECT product_id, COALESCE(removed_at, last_seen_at), 0
+            FROM products
+            WHERE is_active = 0
+            """
+        )
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES ('catalog_removals_backfill_v1', ?)",
+            (datetime.now(QATAR_TZ).isoformat(timespec="seconds"),),
+        )
 
     def _reset_bad_catalog_additions_once(self, conn: sqlite3.Connection) -> None:
         """Clear false-positive rows from early catalog_additions rollout."""
@@ -523,7 +559,7 @@ class ProductStore:
         """
         removed_ids = previous_ids - current_ids
         added_ids = current_ids - previous_ids
-        now = datetime.now().isoformat(timespec="seconds")
+        now = datetime.now(QATAR_TZ).isoformat(timespec="seconds")
         additions_recorded = self._record_catalog_additions(
             added_ids,
             run_id=run_id,
@@ -532,19 +568,33 @@ class ProductStore:
             current_ids=current_ids,
         )
 
-        with self._connect() as conn:
-            if removed_ids:
+        removals_applied = 0
+        removals_recorded = 0
+        if removed_ids and self._should_track_catalog_removals(
+            previous_ids=previous_ids,
+            current_ids=current_ids,
+            removed_ids=removed_ids,
+            baseline=baseline,
+        ):
+            with self._connect() as conn:
                 placeholders = ",".join("?" * len(removed_ids))
-                conn.execute(
+                cursor = conn.execute(
                     f"""
                     UPDATE products
                     SET is_active = 0, removed_at = ?
                     WHERE product_id IN ({placeholders})
                       AND is_active = 1
                     """,
-                    [now, *removed_ids],
+                    [now, *sorted(removed_ids)],
                 )
+                removals_applied = cursor.rowcount
+            removals_recorded = self._record_catalog_removals(
+                removed_ids,
+                run_id=run_id,
+                removed_at=now,
+            )
 
+        with self._connect() as conn:
             conn.execute(
                 """
                 UPDATE scrape_runs
@@ -555,7 +605,7 @@ class ProductStore:
                 """,
                 (
                     json.dumps(sorted(current_ids), ensure_ascii=False),
-                    len(removed_ids),
+                    removals_applied,
                     len(added_ids),
                     run_id,
                 ),
@@ -565,9 +615,10 @@ class ProductStore:
             "baseline": baseline,
             "previous_size": len(previous_ids),
             "current_size": len(current_ids),
-            "removed": len(removed_ids),
+            "removed": removals_applied,
             "added": len(added_ids),
             "additions_recorded": additions_recorded,
+            "removals_recorded": removals_recorded,
         }
 
     @staticmethod
@@ -596,6 +647,55 @@ class ProductStore:
             return False
 
         return True
+
+    @staticmethod
+    def _should_track_catalog_removals(
+        *,
+        previous_ids: set[str],
+        current_ids: set[str],
+        removed_ids: set[str],
+        baseline: str,
+    ) -> bool:
+        if baseline in {"active_db_bootstrap", "none"} or not removed_ids:
+            return False
+        if not previous_ids:
+            return False
+        if len(removed_ids) > ProductStore.MAX_CATALOG_REMOVALS_PER_RUN:
+            return False
+
+        current_size = len(current_ids)
+        if current_size >= 200:
+            min_previous = max(500, int(current_size * 0.85))
+            if len(previous_ids) < min_previous:
+                return False
+            if len(removed_ids) > max(200, int(current_size * 0.25)):
+                return False
+        elif len(removed_ids) > 50:
+            return False
+
+        return True
+
+    def _record_catalog_removals(
+        self,
+        removed_ids: set[str],
+        *,
+        run_id: int,
+        removed_at: str,
+    ) -> int:
+        """Log products that disappeared from the offer vs the previous snapshot."""
+        recorded = 0
+        with self._connect() as conn:
+            for product_id in sorted(removed_ids):
+                cursor = conn.execute(
+                    """
+                    INSERT OR IGNORE INTO catalog_removals (
+                        product_id, removed_at, scrape_run_id
+                    ) VALUES (?, ?, ?)
+                    """,
+                    (product_id, removed_at, run_id),
+                )
+                recorded += cursor.rowcount
+        return recorded
 
     def _record_catalog_additions(
         self,
@@ -1125,17 +1225,18 @@ class ProductStore:
         drops.sort(key=lambda row: row["drop_amount"], reverse=True)
         return drops[:limit]
 
-    def get_sold_products(self, limit: int = 200, recent_hours: int | None = None) -> list[dict[str, Any]]:
-        """Products no longer on the offer page (is_active=0) with last known price."""
+    def get_sold_products(self, limit: int = 500, recent_hours: int | None = None) -> list[dict[str, Any]]:
+        """Products removed from the offer via catalog diff, with last known price."""
         query = """
             SELECT
                 p.product_id, p.sku, p.name, p.brand, p.url, p.image_url,
-                p.sizes_json, p.gender, p.last_seen_at, p.removed_at,
+                p.sizes_json, p.gender, p.last_seen_at, cr.removed_at,
                 lp.current_price AS last_price,
                 lp.old_price AS last_old_price,
                 lp.discount_percent AS last_discount,
                 lp.price_date AS last_price_date
-            FROM products p
+            FROM catalog_removals cr
+            INNER JOIN products p ON p.product_id = cr.product_id
             LEFT JOIN (
                 SELECT product_id, current_price, old_price, discount_percent, price_date,
                        ROW_NUMBER() OVER (
@@ -1148,9 +1249,9 @@ class ProductStore:
         """
         params: list[Any] = []
         if recent_hours is not None:
-            query += " AND datetime(COALESCE(p.removed_at, p.last_seen_at)) >= datetime(?)"
+            query += " AND cr.removed_at >= ?"
             params.append(self._hours_ago_qatar(recent_hours))
-        query += " ORDER BY COALESCE(p.removed_at, p.last_seen_at) DESC LIMIT ?"
+        query += " ORDER BY cr.removed_at DESC LIMIT ?"
         params.append(limit)
 
         with self._connect() as conn:
@@ -1171,10 +1272,15 @@ class ProductStore:
         return result
 
     def count_sold_products(self, recent_hours: int | None = None) -> int:
-        query = "SELECT COUNT(*) AS c FROM products WHERE is_active = 0"
+        query = """
+            SELECT COUNT(*) AS c
+            FROM catalog_removals cr
+            INNER JOIN products p ON p.product_id = cr.product_id
+            WHERE p.is_active = 0
+        """
         params: list[Any] = []
         if recent_hours is not None:
-            query += " AND datetime(COALESCE(removed_at, last_seen_at)) >= datetime(?)"
+            query += " AND cr.removed_at >= ?"
             params.append(self._hours_ago_qatar(recent_hours))
         with self._connect() as conn:
             row = conn.execute(query, params).fetchone()

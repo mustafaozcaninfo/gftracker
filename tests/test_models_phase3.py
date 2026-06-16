@@ -82,26 +82,26 @@ class ProductStorePhase3Tests(unittest.TestCase):
         now_qatar = datetime.now(QATAR_TZ)
         recent = (now_qatar - timedelta(hours=2)).isoformat(timespec="seconds")
         old = (now_qatar - timedelta(hours=30)).isoformat(timespec="seconds")
+        run_id = self.store.start_scrape_run(total_pages=1)
 
         with self.store._connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO products (
-                    product_id, sku, name, brand, url,
-                    first_seen_at, last_seen_at, is_active, removed_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
-                """,
-                ("recent", "R1", "Recent", "B", "https://x", recent, recent, recent),
-            )
-            conn.execute(
-                """
-                INSERT INTO products (
-                    product_id, sku, name, brand, url,
-                    first_seen_at, last_seen_at, is_active, removed_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
-                """,
-                ("old", "O1", "Old", "B", "https://x", old, old, old),
-            )
+            for pid, ts in (("recent", recent), ("old", old)):
+                conn.execute(
+                    """
+                    INSERT INTO products (
+                        product_id, sku, name, brand, url,
+                        first_seen_at, last_seen_at, is_active, removed_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
+                    """,
+                    (pid, f"SKU-{pid}", pid, "B", "https://x", ts, ts, ts),
+                )
+                conn.execute(
+                    """
+                    INSERT INTO catalog_removals (product_id, removed_at, scrape_run_id)
+                    VALUES (?, ?, ?)
+                    """,
+                    (pid, ts, run_id),
+                )
 
         recent_sold = self.store.get_sold_products(limit=10, recent_hours=24)
         ids = {row["product_id"] for row in recent_sold}

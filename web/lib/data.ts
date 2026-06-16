@@ -25,6 +25,7 @@ export type {
   NewProductsData,
   ProductDetailData,
   ProductsCatalogExport,
+  SoldProductsData,
   SoldProductsExport,
 } from "./types";
 
@@ -162,11 +163,20 @@ export async function loadBiggestDrops(): Promise<PriceDrop[]> {
 
 export async function loadSoldProducts(): Promise<SoldProductsExport> {
   try {
-    return await readJson<SoldProductsExport>("sold_products.json");
+    const data = await readJson<SoldProductsExport>("sold_products.json");
+    return {
+      sold_recent: data.sold_recent ?? [],
+      sold_all: data.sold_all ?? [],
+      window_hours: data.window_hours ?? 48,
+      sold_recent_24h: data.sold_recent_24h ?? 0,
+      sold_recent_48h: data.sold_recent_48h ?? 0,
+      sold_total: data.sold_total ?? 0,
+    };
   } catch {
     return {
       sold_recent: [],
       sold_all: [],
+      window_hours: 48,
       sold_recent_24h: 0,
       sold_recent_48h: 0,
       sold_total: 0,

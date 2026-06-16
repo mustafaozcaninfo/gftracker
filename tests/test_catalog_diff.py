@@ -58,8 +58,13 @@ class CatalogDiffTests(unittest.TestCase):
                 "SELECT is_active, removed_at FROM products WHERE product_id = ?",
                 ("c",),
             ).fetchone()
+            removal = conn.execute(
+                "SELECT product_id FROM catalog_removals WHERE product_id = ?",
+                ("c",),
+            ).fetchone()
         self.assertEqual(int(row["is_active"]), 0)
         self.assertIsNotNone(row["removed_at"])
+        self.assertIsNotNone(removal)
 
     def test_finalize_uses_previous_snapshot(self) -> None:
         for pid in ("1", "2"):
