@@ -42,7 +42,14 @@ export function readWatchlist(): WatchlistItem[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as WatchlistItem[];
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    // Keep first occurrence of each product_id.
+    const seen = new Set<string>();
+    return parsed.filter((item) => {
+      if (!item?.product_id || seen.has(item.product_id)) return false;
+      seen.add(item.product_id);
+      return true;
+    });
   } catch {
     return [];
   }
@@ -74,17 +81,34 @@ export function toggleWatchlistItem(
   ];
 }
 
+function utf8ToBase64(text: string): string {
+  if (typeof btoa === "undefined") return "";
+  const bytes = new TextEncoder().encode(text);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function base64ToUtf8(encoded: string): string {
+  const binary = atob(encoded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
 export function encodeWatchlistShare(items: WatchlistItem[]): string {
   const json = JSON.stringify(items);
-  if (typeof btoa === "undefined") return "";
-  return btoa(json).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return utf8ToBase64(json)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 }
 
 export function decodeWatchlistShare(encoded: string): WatchlistItem[] | null {
   try {
     const padded = encoded.replace(/-/g, "+").replace(/_/g, "/");
     const pad = padded.length % 4 === 0 ? "" : "=".repeat(4 - (padded.length % 4));
-    const json = atob(padded + pad);
+    const json = base64ToUtf8(padded + pad);
     const parsed = JSON.parse(json) as WatchlistItem[];
     if (!Array.isArray(parsed)) return null;
     return parsed.filter(
@@ -154,7 +178,7 @@ export function exportWatchlistCsv(
         current?.current_price ?? "",
         item.snapshot.discount_percent,
         current?.discount_percent ?? "",
-        delta.changed ? delta.amount : 0,
+        delta.priceChanged ? delta.amount : 0,
         item.snapshot.url,
       ]
         .map(escape)
@@ -184,6 +208,7 @@ export function priceDelta(
   current: Product | undefined,
 ): {
   changed: boolean;
+  priceChanged: boolean;
   dropped: boolean;
   amount: number;
   discountChanged: boolean;
@@ -191,19 +216,33 @@ export function priceDelta(
   if (!current) {
     return {
       changed: false,
+      priceChanged: false,
+      dropped: false,
+      amount: 0,
+      discountChanged: false,
+    };
+  }
+  if (
+    !Number.isFinite(current.current_price) ||
+    !Number.isFinite(snapshot.current_price)
+  ) {
+    return {
+      changed: false,
+      priceChanged: false,
       dropped: false,
       amount: 0,
       discountChanged: false,
     };
   }
   const amount = current.current_price - snapshot.current_price;
+  const priceChanged = amount !== 0;
+  const discountChanged =
+    current.discount_percent !== snapshot.discount_percent;
   return {
-    changed:
-      amount !== 0 ||
-      current.discount_percent !== snapshot.discount_percent,
+    changed: priceChanged || discountChanged,
+    priceChanged,
     dropped: amount < 0,
     amount,
-    discountChanged:
-      current.discount_percent !== snapshot.discount_percent,
+    discountChanged,
   };
 }

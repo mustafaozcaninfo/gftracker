@@ -5,7 +5,7 @@ import { PriceChanges } from "@/components/PriceChanges";
 
 export const metadata = pageMetadata(
   "Price Changes",
-  "Every logged price or discount move from hourly scrapes.",
+  "Recent logged price or discount moves from hourly scrapes (last 200).",
   "/price-changes",
 );
 
@@ -23,9 +23,10 @@ export default async function PriceChangesPage() {
           <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
             Activity
           </p>
-          <h2 className="font-display text-xl sm:text-2xl">All Price Changes</h2>
+          <h2 className="font-display text-xl sm:text-2xl">Recent Price Changes</h2>
           <p className="mt-1 text-sm text-neutral-600">
-            Every logged price or discount move — drops and increases — from hourly scrapes.
+            Latest logged price or discount moves — drops and increases — from
+            hourly scrapes (showing up to {changes.length || 200} recent entries).
           </p>
         </div>
         <PriceChanges changes={changes} hideHeader />

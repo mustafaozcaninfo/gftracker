@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -110,7 +111,36 @@ class CatalogDiffTests(unittest.TestCase):
             run_id=run_id,
             baseline="snapshot:2",
         )
-        self.assertEqual(repeat["additions_recorded"], 0)
+        # Re-list upserts listed_at so the addition is recorded again.
+        self.assertEqual(repeat["additions_recorded"], 1)
+
+    def test_bulk_removal_guard_freezes_snapshot(self) -> None:
+        previous = {str(i) for i in range(60)}
+        current = {str(i) for i in range(5)}
+        for pid in previous:
+            _insert_product(self.store, pid)
+        run_id = self.store.start_scrape_run(total_pages=1)
+
+        diff = self.store.apply_catalog_diff(
+            previous_ids=previous,
+            current_ids=current,
+            run_id=run_id,
+            baseline="snapshot:1",
+        )
+
+        self.assertEqual(diff["removed"], 0)
+        with self.store._connect() as conn:
+            snap = json.loads(
+                conn.execute(
+                    "SELECT catalog_snapshot FROM scrape_runs WHERE id = ?",
+                    (run_id,),
+                ).fetchone()["catalog_snapshot"]
+            )
+            active = conn.execute(
+                "SELECT COUNT(*) AS c FROM products WHERE is_active = 1"
+            ).fetchone()["c"]
+        self.assertEqual(set(snap), previous | current)
+        self.assertEqual(active, 60)
 
 
 if __name__ == "__main__":

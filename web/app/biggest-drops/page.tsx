@@ -27,9 +27,10 @@ export default async function BiggestDropsPage() {
           </p>
           <h2 className="font-display text-xl sm:text-2xl">Biggest Price Drops</h2>
           <p className="mt-1 text-sm text-neutral-600">
-            Largest QAR reductions from recorded price changes. Also see{" "}
+            Largest QAR reductions from the most recent recorded price changes
+            (ranked from the latest ~500 logged moves). Also see{" "}
             <Link href="/price-changes" className="underline hover:text-neutral-900">
-              all changes
+              recent changes
             </Link>
             .
           </p>

@@ -101,15 +101,21 @@ export function ProductGrid() {
     [products, filters, deferredQuery],
   );
 
+  // Size availability for auto-reset must use committed URL search, not mid-typing deferred query.
+  const sizeFacets = useMemo(
+    () => deriveFilterFacets(products, filters, filters.search),
+    [products, filters],
+  );
+
   useEffect(() => {
     if (loading || products.length === 0) return;
 
     const patches: Partial<typeof filters> = {};
     if (!isBrandInCatalog(brand, products)) patches.brand = "all";
     if (!isGenderInCatalog(gender, products)) patches.gender = "all";
-    if (!isSizeAvailable(size, facets)) patches.size = "all";
+    if (!isSizeAvailable(size, sizeFacets)) patches.size = "all";
     if (Object.keys(patches).length > 0) updateFilters(patches);
-  }, [loading, products, facets, brand, gender, size, updateFilters]);
+  }, [loading, products, sizeFacets, brand, gender, size, updateFilters]);
 
   const filtered = useMemo(() => {
     const list = products.filter((p) =>

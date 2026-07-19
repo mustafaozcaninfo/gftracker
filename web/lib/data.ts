@@ -155,7 +155,7 @@ export async function loadCatalogCounts(): Promise<{
 export async function loadBiggestDrops(): Promise<PriceDrop[]> {
   try {
     const data = await readJson<BiggestDropsExport>("biggest_drops.json");
-    return data.biggest_drops;
+    return data.biggest_drops ?? [];
   } catch {
     return [];
   }
@@ -187,7 +187,7 @@ export async function loadSoldProducts(): Promise<SoldProductsExport> {
 export async function loadPriceChanges(): Promise<PriceChange[]> {
   try {
     const data = await readJson<PriceChangesExport>("price_changes.json");
-    return data.price_changes;
+    return data.price_changes ?? [];
   } catch {
     return [];
   }

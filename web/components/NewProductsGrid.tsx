@@ -42,6 +42,7 @@ export function NewProductsGrid({
         <p className="mt-1 text-sm text-neutral-600">
           Newly listed in the last {windowDays} days · {count48h.toLocaleString()} in
           the last 48h · showing {visible.length} of {products.length}
+          {products.length >= 300 ? " (list capped at 300 most recent)" : ""}
         </p>
       </div>
 

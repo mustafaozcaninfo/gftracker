@@ -31,6 +31,7 @@ REQUIRED_EXPORT_FILES = (
     "best_deals.json",
     "biggest_drops.json",
     "brand_stats.json",
+    "price_histories.json",
 )
 
 REQUIRED_META_STATS = (
@@ -108,7 +109,11 @@ def build_dashboard_payload(
     )
 
     brands = sorted({p["brand"] for p in products if p.get("brand")})
-    discounts = [p["discount_percent"] for p in products if p.get("discount_percent")]
+    discounts = [
+        p["discount_percent"]
+        for p in products
+        if p.get("discount_percent") is not None
+    ]
 
     discount_buckets: dict[str, int] = {}
     for start in range(0, 70, 10):
@@ -278,7 +283,7 @@ def export_dashboard(
         if gender:
             gender_counts[gender] = gender_counts.get(gender, 0) + 1
 
-    histories = store.export_price_histories(max_points=14)
+    histories = store.export_price_histories(max_points=60)
     for product in payload["products"]:
         hist = histories.get(product["product_id"], [])
         product["sparkline"] = [point[1] for point in hist[-14:]]

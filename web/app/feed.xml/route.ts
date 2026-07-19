@@ -22,13 +22,11 @@ export async function GET() {
       title: `${product.brand} — ${product.name} (${product.discount_percent}% off)`,
       link: `${SITE_URL}/products/${product.product_id}`,
       description: `Now QAR ${product.current_price} (was ${product.old_price})`,
-      guid: `deal-${product.product_id}`,
     })),
     ...drops.slice(0, 10).map((drop) => ({
       title: `Price drop: ${drop.name} (−QAR ${drop.drop_amount})`,
       link: `${SITE_URL}/products/${drop.product_id}`,
       description: `${drop.old_current_price} → ${drop.new_current_price} QAR`,
-      guid: `drop-${drop.product_id}-${drop.timestamp}`,
     })),
   ];
 
@@ -46,7 +44,7 @@ export async function GET() {
       <title>${escapeXml(item.title)}</title>
       <link>${escapeXml(item.link)}</link>
       <description>${escapeXml(item.description)}</description>
-      <guid isPermaLink="true">${escapeXml(item.guid)}</guid>
+      <guid isPermaLink="true">${escapeXml(item.link)}</guid>
     </item>`,
       )
       .join("")}

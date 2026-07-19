@@ -122,9 +122,15 @@ export function WatchlistItemCard({
           </div>
 
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
-            <span className="text-neutral-500 line-through">
-              {formatQAR(item.snapshot.current_price)} when liked
-            </span>
+            {delta.dropped ? (
+              <span className="text-neutral-500 line-through">
+                {formatQAR(item.snapshot.current_price)} when liked
+              </span>
+            ) : (
+              <span className="text-neutral-500">
+                {formatQAR(item.snapshot.current_price)} when liked
+              </span>
+            )}
             {current ? (
               <>
                 <span className="text-neutral-400">→</span>
@@ -133,10 +139,10 @@ export function WatchlistItemCard({
                 </span>
                 {current.old_price > current.current_price && (
                   <span className="text-xs text-neutral-400 line-through">
-                    {formatQAR(current.old_price)}
+                    Store was {formatQAR(current.old_price)}
                   </span>
                 )}
-                {delta.changed ? (
+                {delta.priceChanged ? (
                   <span
                     className={
                       delta.dropped
@@ -147,6 +153,11 @@ export function WatchlistItemCard({
                     {delta.dropped ? "↓" : "↑"} {formatQAR(Math.abs(delta.amount))}
                     {delta.discountChanged &&
                       ` · ${item.snapshot.discount_percent}% → ${current.discount_percent}%`}
+                  </span>
+                ) : delta.discountChanged ? (
+                  <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-700">
+                    Discount updated · {item.snapshot.discount_percent}% →{" "}
+                    {current.discount_percent}%
                   </span>
                 ) : (
                   <span className="text-xs text-neutral-500">No change since liked</span>

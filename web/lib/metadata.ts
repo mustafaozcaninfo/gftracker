@@ -6,11 +6,12 @@ export function pageMetadata(
   description?: string,
   path?: string,
 ): Metadata {
+  // Bare title — root layout template appends ` · GF Tracker`.
   const fullTitle = `${title} · ${SITE_NAME}`;
   const desc = description ?? SITE_DESCRIPTION;
   const url = path ? `${SITE_URL}${path}` : SITE_URL;
   return {
-    title: fullTitle,
+    title,
     description: desc,
     openGraph: {
       title: fullTitle,

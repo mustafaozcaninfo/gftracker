@@ -570,12 +570,16 @@ class ProductStore:
 
         removals_applied = 0
         removals_recorded = 0
-        if removed_ids and self._should_track_catalog_removals(
-            previous_ids=previous_ids,
-            current_ids=current_ids,
-            removed_ids=removed_ids,
-            baseline=baseline,
-        ):
+        removals_tracked = bool(
+            removed_ids
+            and self._should_track_catalog_removals(
+                previous_ids=previous_ids,
+                current_ids=current_ids,
+                removed_ids=removed_ids,
+                baseline=baseline,
+            )
+        )
+        if removals_tracked:
             with self._connect() as conn:
                 placeholders = ",".join("?" * len(removed_ids))
                 cursor = conn.execute(
@@ -594,6 +598,13 @@ class ProductStore:
                 removed_at=now,
             )
 
+        # If removals were skipped by a safety guard, keep previous IDs in the
+        # snapshot (plus any true additions) so ghosts remain detectable next run.
+        if removed_ids and not removals_tracked:
+            snapshot_ids = previous_ids | current_ids
+        else:
+            snapshot_ids = current_ids
+
         with self._connect() as conn:
             conn.execute(
                 """
@@ -604,7 +615,7 @@ class ProductStore:
                 WHERE id = ?
                 """,
                 (
-                    json.dumps(sorted(current_ids), ensure_ascii=False),
+                    json.dumps(sorted(snapshot_ids), ensure_ascii=False),
                     removals_applied,
                     len(added_ids),
                     run_id,
@@ -688,13 +699,16 @@ class ProductStore:
             for product_id in sorted(removed_ids):
                 cursor = conn.execute(
                     """
-                    INSERT OR IGNORE INTO catalog_removals (
+                    INSERT INTO catalog_removals (
                         product_id, removed_at, scrape_run_id
                     ) VALUES (?, ?, ?)
+                    ON CONFLICT(product_id) DO UPDATE SET
+                        removed_at = excluded.removed_at,
+                        scrape_run_id = excluded.scrape_run_id
                     """,
                     (product_id, removed_at, run_id),
                 )
-                recorded += cursor.rowcount
+                recorded += 1 if cursor.rowcount else 0
         return recorded
 
     def _record_catalog_additions(
@@ -721,13 +735,16 @@ class ProductStore:
             for product_id in sorted(added_ids):
                 cursor = conn.execute(
                     """
-                    INSERT OR IGNORE INTO catalog_additions (
+                    INSERT INTO catalog_additions (
                         product_id, listed_at, scrape_run_id
                     ) VALUES (?, ?, ?)
+                    ON CONFLICT(product_id) DO UPDATE SET
+                        listed_at = excluded.listed_at,
+                        scrape_run_id = excluded.scrape_run_id
                     """,
                     (product_id, listed_at, run_id),
                 )
-                recorded += cursor.rowcount
+                recorded += 1 if cursor.rowcount else 0
         return recorded
 
     def finalize_scrape_catalog(
@@ -817,7 +834,10 @@ class ProductStore:
                                 WHEN ? != '' THEN ?
                                 ELSE image_url
                             END,
-                            sizes_json = ?,
+                            sizes_json = CASE
+                                WHEN ? != '[]' THEN ?
+                                ELSE sizes_json
+                            END,
                             gender = ?,
                             last_seen_at = ?, is_active = 1, removed_at = NULL
                         WHERE product_id = ?
@@ -829,6 +849,7 @@ class ProductStore:
                             product.url,
                             product.image_url,
                             product.image_url,
+                            self._sizes_payload(product.sizes),
                             self._sizes_payload(product.sizes),
                             product.gender or infer_gender(product.name, product.brand),
                             product.timestamp,
@@ -908,11 +929,11 @@ class ProductStore:
                             (product.product_id, today),
                         ).fetchone()
                         if existing_change:
+                            # Keep day-open old_* so net daily move stays correct
+                            # when price hops multiple times (e.g. 100→70→85).
                             conn.execute(
                                 """
                                 UPDATE price_changes SET
-                                    old_current_price = new_current_price,
-                                    old_discount_percent = new_discount_percent,
                                     new_current_price = ?,
                                     new_discount_percent = ?,
                                     sku = ?,

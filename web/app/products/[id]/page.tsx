@@ -16,7 +16,7 @@ export async function generateMetadata({
   const { product, sold } = await loadProductDetail(id);
   const item = product ?? sold;
   if (!item) {
-    return { title: "Product not found · GF Tracker" };
+    return { title: "Product not found" };
   }
 
   const title = `${item.brand} — ${item.name}`;

@@ -65,6 +65,43 @@ class ProductStorePhase3Tests(unittest.TestCase):
         self.assertIsNotNone(row)
         self.assertEqual(float(row["new_current_price"]), 90.0)
 
+    def test_same_day_price_changes_keep_day_open(self) -> None:
+        """Intraday hops must preserve the first old_* (day open), not last hop."""
+        with patch.object(ProductStore, "_today", return_value="2026-06-12"):
+            with patch.object(ProductStore, "_yesterday", return_value="2026-06-11"):
+                self.store.record_daily_scrape([_product("1", 100.0)], self.run_id)
+                self.store.record_daily_scrape([_product("1", 70.0)], self.run_id)
+                self.store.record_daily_scrape([_product("1", 85.0)], self.run_id)
+
+        with self.store._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT old_current_price, new_current_price
+                FROM price_changes WHERE product_id = ?
+                """,
+                ("1",),
+            ).fetchone()
+
+        self.assertIsNotNone(row)
+        self.assertEqual(float(row["old_current_price"]), 100.0)
+        self.assertEqual(float(row["new_current_price"]), 85.0)
+
+    def test_empty_sizes_do_not_wipe_existing(self) -> None:
+        with_sizes = _product("1", 100.0)
+        with_sizes.sizes = ["M", "L"]
+        empty = _product("1", 100.0)
+        empty.sizes = []
+
+        self.store.record_daily_scrape([with_sizes], self.run_id)
+        self.store.record_daily_scrape([empty], self.run_id)
+
+        with self.store._connect() as conn:
+            row = conn.execute(
+                "SELECT sizes_json FROM products WHERE product_id = ?",
+                ("1",),
+            ).fetchone()
+        self.assertEqual(row["sizes_json"], '["M", "L"]')
+
     def test_analytics_uses_latest_price_when_today_missing(self) -> None:
         product = _product("1", 150.0)
 

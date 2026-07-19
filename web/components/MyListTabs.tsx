@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useProductsCatalog } from "@/lib/catalog-client";
+import { formatQAR } from "@/lib/format";
 import type { PriceChange } from "@/lib/types";
 import { decodeWatchlistShare, priceDelta } from "@/lib/watchlist";
 import { useWatchlist } from "./WatchlistProvider";
@@ -109,7 +110,15 @@ export function MyListTabs({ changes }: MyListTabsProps) {
     [likedWithDelta, likedSort],
   );
 
-  const changedCount = likedWithDelta.filter(({ delta }) => delta.changed).length;
+  const droppedRows = likedWithDelta.filter(({ delta }) => delta.dropped);
+  const droppedCount = droppedRows.length;
+  const droppedSavings = droppedRows.reduce(
+    (sum, { delta }) => sum + Math.abs(delta.amount),
+    0,
+  );
+  const otherChangedCount = likedWithDelta.filter(
+    ({ delta }) => delta.changed && !delta.dropped,
+  ).length;
 
   const watchedChanges = useMemo(() => {
     if (!items.length) return [];
@@ -194,10 +203,20 @@ export function MyListTabs({ changes }: MyListTabsProps) {
             </div>
           ) : (
             <>
-              {changedCount > 0 && (
+              {droppedCount > 0 && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
+                  <span className="font-medium">{droppedCount}</span> saved item
+                  {droppedCount === 1 ? "" : "s"} dropped in price — combined
+                  savings of{" "}
+                  <span className="font-medium">{formatQAR(droppedSavings)}</span>{" "}
+                  vs when you liked them.
+                </div>
+              )}
+              {otherChangedCount > 0 && (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-                  <span className="font-medium">{changedCount}</span> saved item
-                  {changedCount === 1 ? "" : "s"} changed price since you liked them.
+                  <span className="font-medium">{otherChangedCount}</span> saved
+                  item{otherChangedCount === 1 ? "" : "s"} changed without a
+                  price drop (rise or discount-only).
                 </div>
               )}
 
