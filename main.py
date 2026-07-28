@@ -10,9 +10,33 @@ import yaml
 
 from export_web import export_dashboard
 from models import ProductStore
-from scraper import OfferScraper
+from scraper import OfferScraper, OfferUnavailableError
 
 logger = logging.getLogger(__name__)
+
+
+def _offer_unavailable_summary(
+    *,
+    run_id: int,
+    status_code: int,
+    db_path: str,
+) -> dict[str, Any]:
+    return {
+        "products_found": 0,
+        "pages_scraped": 0,
+        "pages_failed": 0,
+        "total_pages": 0,
+        "scrape_complete": False,
+        "offer_unavailable": True,
+        "offer_status_code": status_code,
+        "new_products_scraped": 0,
+        "price_changes": 0,
+        "new_products_48h": 0,
+        "scrape_run_id": run_id,
+        "snapshot_path": None,
+        "web_dashboard_path": None,
+        "db_path": db_path,
+    }
 
 
 def load_config(config_path: str | Path = "config.yaml") -> dict[str, Any]:
@@ -97,6 +121,22 @@ def run_update(config_path: str | Path = "config.yaml", verbose: bool = False) -
             pages_scraped=pages_ok,
             products_found=len(all_products),
             status="completed" if pages_failed == 0 else "partial",
+        )
+    except OfferUnavailableError as exc:
+        logger.warning(
+            "Offer page unavailable (HTTP %s) — stopping scrape without further requests",
+            exc.status_code,
+        )
+        store.complete_scrape_run(
+            run_id,
+            pages_scraped=0,
+            products_found=0,
+            status="offer_unavailable",
+        )
+        return _offer_unavailable_summary(
+            run_id=run_id,
+            status_code=exc.status_code,
+            db_path=config["output"]["db_path"],
         )
     except Exception:
         store.complete_scrape_run(

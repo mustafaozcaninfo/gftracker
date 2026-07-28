@@ -30,6 +30,17 @@ def build_summary_message(summary: dict[str, Any], stats: dict[str, Any]) -> str
 
 
 def build_failure_message(reason: str, summary: dict[str, Any] | None = None) -> str:
+    if summary and summary.get("offer_unavailable"):
+        status = summary.get("offer_status_code", 404)
+        lines = [
+            "GF Tracker — offer page unavailable",
+            reason,
+            f"HTTP status: {status}",
+            "Hourly scrapes are paused; a daily probe continues until the page returns.",
+            "https://gftracker.vercel.app",
+        ]
+        return "\n".join(lines)
+
     lines = ["GF Tracker — scrape FAILED", reason]
     if summary:
         lines.append(

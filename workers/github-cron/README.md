@@ -7,6 +7,8 @@ Cloudflare Worker that triggers the hourly scrape workflow on GitHub Actions.
 - **Cron:** `15 * * * *` (minute 15 of every hour, UTC)
 - **Target:** `POST https://api.github.com/repos/mustafaozcaninfo/gftracker/actions/workflows/daily-tracker.yml/dispatches` with `{"ref":"main"}`
 
+Before dispatching, the worker probes `offer.html`. If the offer returns **404/410** (sale ended), it **skips** hourly GitHub runs and only dispatches once per day at **06:15 UTC** (~09:15 Qatar) until the page returns. Manual `/trigger` always dispatches.
+
 The workflow file `.github/workflows/daily-tracker.yml` listens for `workflow_dispatch` (and legacy `repository_dispatch` type `hourly-scrape`).
 
 ## Setup

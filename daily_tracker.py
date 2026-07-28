@@ -62,6 +62,22 @@ def main() -> int:
         return 1
 
     if not summary.get("scrape_complete"):
+        if summary.get("offer_unavailable"):
+            status = summary.get("offer_status_code", 404)
+            reason = (
+                f"Offer page HTTP {status} — sale/listing likely ended. "
+                "Hourly scrapes paused; Cloudflare cron probes once daily until it returns."
+            )
+            if _fallback_export(config_path):
+                notify_scrape_failure(reason, summary=summary)
+                print(
+                    f"Offer unavailable (HTTP {status}) — kept site online from cache; "
+                    "no further page requests this run."
+                )
+                return 0
+            notify_scrape_failure(reason, summary=summary)
+            return 2
+
         reason = (
             "Incomplete scrape — deploy skipped "
             f"({summary.get('pages_failed', 0)} page failures)"

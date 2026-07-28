@@ -22,6 +22,18 @@ logger = logging.getLogger(__name__)
 
 RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504})
 SESSION_RESET_STATUSES = frozenset({502, 503, 504})
+# Permanent "offer ended / page gone" — do not retry or recover.
+TERMINAL_UNAVAILABLE_STATUSES = frozenset({404, 410})
+
+
+class OfferUnavailableError(RuntimeError):
+    """Offer page is gone (404/410) — sale likely ended; stop scraping."""
+
+    def __init__(self, status_code: int, url: str = "") -> None:
+        self.status_code = status_code
+        self.url = url
+        super().__init__(f"Offer unavailable (HTTP {status_code}): {url or 'offer page'}")
+
 
 DISCOUNT_PATTERN = re.compile(r"(\d+)\s*%\s*Off", re.IGNORECASE)
 PRICE_AMOUNT_PATTERN = re.compile(r"data-price-amount=\"([\d.]+)\"")
@@ -150,8 +162,12 @@ class StealthSession:
                     attempt,
                     self.max_retries,
                 )
+                if last_status in TERMINAL_UNAVAILABLE_STATUSES:
+                    raise OfferUnavailableError(last_status, url)
                 if last_status in SESSION_RESET_STATUSES:
                     self.reset()
+            except OfferUnavailableError:
+                raise
             except requests.RequestException as exc:
                 logger.warning(
                     "Request failed for %s (attempt %s/%s): %s",
@@ -208,7 +224,10 @@ class OfferScraper:
 
     def fetch_page_resilient(self, page: int) -> str | None:
         """Fetch with extra cooldown waves — critical for page 1 when the store returns 503."""
-        html = self.fetch_page(page)
+        try:
+            html = self.fetch_page(page)
+        except OfferUnavailableError:
+            raise
         if html is not None:
             return html
         if page != 1 or self.recovery_waves <= 0:
@@ -225,7 +244,10 @@ class OfferScraper:
             )
             time.sleep(wait)
             self.session.reset()
-            html = self.fetch_page(page)
+            try:
+                html = self.fetch_page(page)
+            except OfferUnavailableError:
+                raise
             if html is not None:
                 logger.info("Page %s recovered on wave %s", page, wave)
                 return html

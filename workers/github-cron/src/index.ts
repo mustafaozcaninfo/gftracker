@@ -5,6 +5,27 @@ interface Env {
 
 const REPO = "mustafaozcaninfo/gftracker";
 const WORKFLOW_FILE = "daily-tracker.yml";
+const OFFER_URL = "https://www.galerieslafayette.qa/offer.html?is_scroll=1&p=1";
+/** While offer is 404/410, only dispatch GitHub once per day at this UTC hour (cron :15). */
+const DAILY_CHECK_UTC_HOUR = 6; // 09:15 Qatar (UTC+3)
+
+async function probeOfferStatus(): Promise<number> {
+  try {
+    const response = await fetch(OFFER_URL, {
+      method: "GET",
+      redirect: "follow",
+      headers: {
+        "User-Agent": "gftracker-cloudflare-cron",
+        Accept: "text/html,application/xhtml+xml",
+      },
+    });
+    return response.status;
+  } catch (err) {
+    console.error("Offer probe failed:", err);
+    // Network blip — still allow scrape attempt so Python can retry.
+    return 0;
+  }
+}
 
 async function triggerScrape(env: Env): Promise<Response> {
   const response = await fetch(
@@ -52,10 +73,30 @@ export default {
       }
     }
 
+    // Manual /trigger always runs (debug / force).
     return triggerScrape(env);
   },
 
   async scheduled(_controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
+    const status = await probeOfferStatus();
+    if (status === 404 || status === 410) {
+      const hour = new Date().getUTCHours();
+      if (hour !== DAILY_CHECK_UTC_HOUR) {
+        console.log(
+          `Offer HTTP ${status} — skipping hourly GitHub scrape; ` +
+            `next daily probe at ${DAILY_CHECK_UTC_HOUR}:15 UTC`,
+        );
+        return;
+      }
+      console.log(`Offer HTTP ${status} — running daily availability check via GitHub Actions`);
+    } else if (status === 200) {
+      console.log("Offer HTTP 200 — triggering hourly scrape");
+    } else if (status === 0) {
+      console.log("Offer probe failed — triggering scrape so Python can retry");
+    } else {
+      console.log(`Offer HTTP ${status} — triggering scrape`);
+    }
+
     const response = await triggerScrape(env);
     if (!response.ok) {
       console.error(await response.text());

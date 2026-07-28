@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from scraper import RETRYABLE_STATUSES, StealthSession
+from scraper import RETRYABLE_STATUSES, OfferUnavailableError, StealthSession
 
 
 class StealthSessionRetryTests(unittest.TestCase):
@@ -47,6 +47,20 @@ class StealthSessionRetryTests(unittest.TestCase):
             result = session.get("https://www.galerieslafayette.qa/offer.html")
         self.assertIsNone(result)
         self.assertEqual(reset.call_count, 2)
+
+    @patch("scraper.time.sleep")
+    @patch("scraper.requests.Session.get")
+    def test_404_raises_without_retry(self, mock_get, mock_sleep) -> None:
+        response = unittest.mock.Mock()
+        response.status_code = 404
+        response.headers = {}
+        mock_get.return_value = response
+
+        session = self._session(max_retries=8)
+        with self.assertRaises(OfferUnavailableError) as ctx:
+            session.get("https://www.galerieslafayette.qa/offer.html?is_scroll=1&p=1")
+        self.assertEqual(ctx.exception.status_code, 404)
+        self.assertEqual(mock_get.call_count, 1)
 
 
 if __name__ == "__main__":
