@@ -12,6 +12,7 @@ concurrency:
 
 jobs:
   scrape-and-deploy:
+    if: hashFiles('.gftracker-pause') == ''
     runs-on: ubuntu-latest
     timeout-minutes: 50
 

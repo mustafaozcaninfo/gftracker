@@ -1,6 +1,12 @@
 interface Env {
   GITHUB_PAT: string;
   CRON_SECRET?: string;
+  SCRAPE_PAUSED?: string;
+}
+
+function isScrapePaused(env: Env): boolean {
+  const v = env.SCRAPE_PAUSED?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
 }
 
 const REPO = "mustafaozcaninfo/gftracker";
@@ -73,11 +79,26 @@ export default {
       }
     }
 
-    // Manual /trigger always runs (debug / force).
+    if (isScrapePaused(env)) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          paused: true,
+          message: "GFTracker scraping is paused — GitHub dispatch disabled.",
+        }),
+        { status: 503, headers: { "content-type": "application/json" } },
+      );
+    }
+
     return triggerScrape(env);
   },
 
   async scheduled(_controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
+    if (isScrapePaused(env)) {
+      console.log("SCRAPE_PAUSED — skipping scheduled GitHub dispatch");
+      return;
+    }
+
     const status = await probeOfferStatus();
     if (status === 404 || status === 410) {
       const hour = new Date().getUTCHours();

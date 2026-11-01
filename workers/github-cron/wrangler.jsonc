@@ -3,7 +3,11 @@
   "name": "gftracker-github-cron",
   "main": "src/index.ts",
   "compatibility_date": "2025-06-01",
+  "vars": {
+    "SCRAPE_PAUSED": "true"
+  },
   "triggers": {
-    "crons": ["15 * * * *"]
+    // PAUSED — was hourly at :15 UTC. Resume: "crons": ["15 * * * *"] then `npx wrangler deploy`
+    "crons": []
   }
 }

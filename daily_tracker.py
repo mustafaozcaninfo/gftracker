@@ -45,6 +45,11 @@ def _fallback_export(config_path: Path) -> bool:
 def main() -> int:
     setup_logging(verbose=False)
     config_path = ROOT / "config.yaml"
+    pause_marker = ROOT / ".gftracker-pause"
+    if pause_marker.is_file():
+        logger.info("Project paused (.gftracker-pause) — skipping scrape and export")
+        print("GFTracker paused — no scrape, no deploy payload update.")
+        return 0
 
     try:
         summary = run_update(config_path=config_path, verbose=False)

@@ -1,15 +1,25 @@
 import type { Metadata, Viewport } from "next";
 import { Providers } from "@/components/Providers";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+import { PauseScreen } from "@/components/PauseScreen";
+import {
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_PAUSE_MESSAGE,
+  SITE_PAUSED,
+  SITE_PAUSE_TITLE,
+  SITE_URL,
+} from "@/lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${SITE_NAME} — Galeries Lafayette Qatar Deals`,
+    default: SITE_PAUSED
+      ? `${SITE_NAME} — ${SITE_PAUSE_TITLE}`
+      : `${SITE_NAME} — Galeries Lafayette Qatar Deals`,
     template: `%s · ${SITE_NAME}`,
   },
-  description: SITE_DESCRIPTION,
+  description: SITE_PAUSED ? SITE_PAUSE_MESSAGE : SITE_DESCRIPTION,
   manifest: "/manifest.json",
   alternates: {
     types: {
@@ -18,7 +28,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: SITE_NAME,
-    description: SITE_DESCRIPTION,
+    description: SITE_PAUSED ? SITE_PAUSE_MESSAGE : SITE_DESCRIPTION,
     url: SITE_URL,
     siteName: SITE_NAME,
     type: "website",
@@ -48,7 +58,11 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
-        <Providers>{children}</Providers>
+        {SITE_PAUSED ? (
+          <PauseScreen />
+        ) : (
+          <Providers>{children}</Providers>
+        )}
       </body>
     </html>
   );

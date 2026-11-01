@@ -4,10 +4,13 @@ Cloudflare Worker that triggers the hourly scrape workflow on GitHub Actions.
 
 ## Schedule
 
-- **Cron:** `15 * * * *` (minute 15 of every hour, UTC)
+- **Cron:** currently **paused** (`wrangler.jsonc` → empty `crons`). To resume: set `"crons": ["15 * * * *"]` and `npx wrangler deploy`.
+- **When enabled:** `15 * * * *` (minute 15 of every hour, UTC)
 - **Target:** `POST https://api.github.com/repos/mustafaozcaninfo/gftracker/actions/workflows/daily-tracker.yml/dispatches` with `{"ref":"main"}`
 
-Before dispatching, the worker probes `offer.html`. If the offer returns **404/410** (sale ended), it **skips** hourly GitHub runs and only dispatches once per day at **06:15 UTC** (~09:15 Qatar) until the page returns. Manual `/trigger` always dispatches.
+When **`SCRAPE_PAUSED`** is `true` in `wrangler.jsonc` (or repo file **`.gftracker-pause`** exists), scheduled runs and `/trigger` do **not** call GitHub.
+
+Before dispatching, the worker probes `offer.html`. If the offer returns **404/410** (sale ended), it **skips** hourly GitHub runs and only dispatches once per day at **06:15 UTC** (~09:15 Qatar) until the page returns.
 
 The workflow file `.github/workflows/daily-tracker.yml` listens for `workflow_dispatch` (and legacy `repository_dispatch` type `hourly-scrape`).
 
