@@ -11,8 +11,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  pause-check:
+    runs-on: ubuntu-latest
+    outputs:
+      paused: ${{ steps.gate.outputs.paused }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Operations pause gate
+        id: gate
+        run: |
+          if [ -f .gftracker-pause ]; then
+            echo "paused=true" >> "$GITHUB_OUTPUT"
+            echo "GFTracker paused (.gftracker-pause) — scrape job will not run."
+          else
+            echo "paused=false" >> "$GITHUB_OUTPUT"
+          fi
+
   scrape-and-deploy:
-    if: hashFiles('.gftracker-pause') == ''
+    needs: pause-check
+    if: needs.pause-check.outputs.paused != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 50
 
